@@ -2,6 +2,7 @@
  * DataManager.js
  * Centralized Data Access Layer for Fitness App.
  * Enforces the ER Schema and handles LocalStorage persistence.
+ * Updated: Cache-busting v2
  */
 
 import { analytics } from "./Analytics.js";
@@ -101,10 +102,12 @@ class DataManager {
         this.seedWorkouts();
       }
 
-      // Validate data integrity
-      this._validateStoredData();
-
       this.isInitialized = true;
+
+      // Validate data integrity after initialization - with delay to ensure everything is ready
+      setTimeout(() => {
+        this._validateStoredData();
+      }, 100);
 
       if (config.isDebugMode()) {
         console.log("DataManager initialized successfully");
@@ -198,10 +201,6 @@ class DataManager {
   // Generic Helper with error handling
   _get(key) {
     try {
-      if (!this.isInitialized) {
-        throw new Error("DataManager not initialized");
-      }
-
       const item = localStorage.getItem(key);
       if (!item) return [];
 
@@ -222,10 +221,6 @@ class DataManager {
 
   _save(key, data) {
     try {
-      if (!this.isInitialized) {
-        throw new Error("DataManager not initialized");
-      }
-
       if (!data) {
         console.warn(`Attempting to save empty data for key: ${key}`);
         return false;
@@ -682,6 +677,11 @@ class DataManager {
    * Validate stored data integrity
    */
   _validateStoredData() {
+    if (!this.isInitialized) {
+      console.warn("Skipping validation - DataManager not fully initialized");
+      return;
+    }
+
     const validations = [
       {
         key: this.STORAGE_KEYS.EXERCISES,
@@ -699,7 +699,13 @@ class DataManager {
 
     validations.forEach(({ key, validator }) => {
       try {
-        const data = this._get(key);
+        // Direct localStorage access to avoid _get initialization check
+        const item = localStorage.getItem(key);
+        if (!item) return;
+
+        const data = JSON.parse(item);
+        if (!Array.isArray(data)) return;
+
         if (data.length > 0 && !validator(data)) {
           console.warn(`Data validation failed for ${key}`);
         }

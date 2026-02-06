@@ -5,41 +5,49 @@
  */
 
 export default function AdminDashboard() {
-    // Only show in debug mode
-    if (!window.fitnessApp?.config?.debug) {
-        return `
+  // Only show in debug mode (localhost or development environment)
+  const isDebugMode =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.fitnessApp?.config?.environment === "development";
+
+  if (!isDebugMode) {
+    return `
             <div class="admin-access-denied">
                 <h2>🔒 Accesso Negato</h2>
-                <p>Questa sezione è disponibile solo in modalità debug.</p>
+                <p>Questa sezione è disponibile solo in modalità debug (localhost).</p>
+                <p>Ambiente attuale: ${window.fitnessApp?.config?.environment || "sconosciuto"}</p>
             </div>
         `;
-    }
+  }
 
-    // Initialize dashboard data
-    window.initAdminDashboard = () => {
-        loadSystemStats();
-        loadErrorStats();
-        loadPerformanceMetrics();
-        loadBackupStats();
-        loadUserStats();
-        setupRealTimeUpdates();
+  // Initialize dashboard data
+  window.initAdminDashboard = () => {
+    loadSystemStats();
+    loadErrorStats();
+    loadPerformanceMetrics();
+    loadBackupStats();
+    loadUserStats();
+    setupRealTimeUpdates();
+  };
+
+  window.loadSystemStats = () => {
+    const stats = {
+      appVersion: window.fitnessApp?.config?.app?.version || "Unknown",
+      environment: window.fitnessApp?.config?.environment || "Unknown",
+      uptime: performance.now(),
+      memory: performance.memory
+        ? {
+            used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+            total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
+            limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024),
+          }
+        : null,
+      storage: getStorageUsage(),
+      online: navigator.onLine,
     };
 
-    window.loadSystemStats = () => {
-        const stats = {
-            appVersion: window.fitnessApp?.config?.app?.version || 'Unknown',
-            environment: window.fitnessApp?.config?.environment || 'Unknown',
-            uptime: performance.now(),
-            memory: performance.memory ? {
-                used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
-                total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
-                limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
-            } : null,
-            storage: getStorageUsage(),
-            online: navigator.onLine
-        };
-
-        document.getElementById('system-stats').innerHTML = `
+    document.getElementById("system-stats").innerHTML = `
             <div class="stat-grid">
                 <div class="stat-card">
                     <h4>App Version</h4>
@@ -56,37 +64,40 @@ export default function AdminDashboard() {
                 <div class="stat-card">
                     <h4>Memory Usage</h4>
                     <div class="stat-value">
-                        ${stats.memory ? `${stats.memory.used}MB / ${stats.memory.limit}MB` : 'N/A'}
+                        ${stats.memory ? `${stats.memory.used}MB / ${stats.memory.limit}MB` : "N/A"}
                     </div>
                 </div>
                 <div class="stat-card">
                     <h4>Storage</h4>
                     <div class="stat-value">${stats.storage.used}KB</div>
                 </div>
-                <div class="stat-card ${stats.online ? 'online' : 'offline'}">
+                <div class="stat-card ${stats.online ? "online" : "offline"}">
                     <h4>Network</h4>
-                    <div class="stat-value">${stats.online ? '🟢 Online' : '🔴 Offline'}</div>
+                    <div class="stat-value">${stats.online ? "🟢 Online" : "🔴 Offline"}</div>
                 </div>
             </div>
         `;
+  };
+
+  window.loadErrorStats = () => {
+    const errorStats = window.errorHandler?.getErrorStats() || {
+      totalErrors: 0,
+      errorsByCategory: {},
+      errorsByType: {},
     };
 
-    window.loadErrorStats = () => {
-        const errorStats = window.errorHandler?.getErrorStats() || {
-            totalErrors: 0,
-            errorsByCategory: {},
-            errorsByType: {}
-        };
+    const categoryChart = Object.entries(errorStats.errorsByCategory)
+      .map(
+        ([cat, count]) =>
+          `<div class="error-bar"><span>${cat}</span><div class="bar" style="width: ${Math.min(count * 10, 100)}%">${count}</div></div>`,
+      )
+      .join("");
 
-        const categoryChart = Object.entries(errorStats.errorsByCategory)
-            .map(([cat, count]) => `<div class="error-bar"><span>${cat}</span><div class="bar" style="width: ${Math.min(count * 10, 100)}%">${count}</div></div>`)
-            .join('');
-
-        document.getElementById('error-stats').innerHTML = `
+    document.getElementById("error-stats").innerHTML = `
             <div class="error-overview">
                 <div class="error-total">
                     <h4>Total Errors</h4>
-                    <div class="error-count ${errorStats.totalErrors > 10 ? 'high' : errorStats.totalErrors > 5 ? 'medium' : 'low'}">${errorStats.totalErrors}</div>
+                    <div class="error-count ${errorStats.totalErrors > 10 ? "high" : errorStats.totalErrors > 5 ? "medium" : "low"}">${errorStats.totalErrors}</div>
                 </div>
                 <div class="error-categories">
                     <h4>By Category</h4>
@@ -96,13 +107,16 @@ export default function AdminDashboard() {
                 </div>
             </div>
         `;
+  };
+
+  window.loadPerformanceMetrics = () => {
+    const perfSummary = window.performanceMonitor?.getPerformanceSummary() || {
+      metrics: {},
     };
+    const recommendations =
+      window.performanceMonitor?.getRecommendations() || [];
 
-    window.loadPerformanceMetrics = () => {
-        const perfSummary = window.performanceMonitor?.getPerformanceSummary() || { metrics: {} };
-        const recommendations = window.performanceMonitor?.getRecommendations() || [];
-
-        document.getElementById('performance-metrics').innerHTML = `
+    document.getElementById("performance-metrics").innerHTML = `
             <div class="perf-overview">
                 <div class="perf-metrics">
                     <div class="perf-card">
@@ -128,29 +142,34 @@ export default function AdminDashboard() {
                 </div>
                 <div class="perf-recommendations">
                     <h4>Recommendations</h4>
-                    ${recommendations.length > 0 ?
-                        recommendations.map(rec => `
+                    ${
+                      recommendations.length > 0
+                        ? recommendations
+                            .map(
+                              (rec) => `
                             <div class="recommendation ${rec.priority}">
                                 <strong>${rec.title}</strong>
                                 <p>${rec.description}</p>
                             </div>
-                        `).join('') :
-                        '<p class="no-data">No recommendations</p>'
+                        `,
+                            )
+                            .join("")
+                        : '<p class="no-data">No recommendations</p>'
                     }
                 </div>
             </div>
         `;
+  };
+
+  window.loadBackupStats = () => {
+    const backupStats = window.backupService?.getBackupStats() || {
+      totalBackups: 0,
+      latestBackup: null,
+      totalSize: 0,
+      autoSyncEnabled: false,
     };
 
-    window.loadBackupStats = () => {
-        const backupStats = window.backupService?.getBackupStats() || {
-            totalBackups: 0,
-            latestBackup: null,
-            totalSize: 0,
-            autoSyncEnabled: false
-        };
-
-        document.getElementById('backup-stats').innerHTML = `
+    document.getElementById("backup-stats").innerHTML = `
             <div class="backup-overview">
                 <div class="backup-card">
                     <h4>Total Backups</h4>
@@ -159,9 +178,12 @@ export default function AdminDashboard() {
                 <div class="backup-card">
                     <h4>Latest Backup</h4>
                     <div class="backup-value">
-                        ${backupStats.latestBackup ?
-                            new Date(backupStats.latestBackup).toLocaleDateString() :
-                            'Never'
+                        ${
+                          backupStats.latestBackup
+                            ? new Date(
+                                backupStats.latestBackup,
+                              ).toLocaleDateString()
+                            : "Never"
                         }
                     </div>
                 </div>
@@ -171,23 +193,23 @@ export default function AdminDashboard() {
                 </div>
                 <div class="backup-card">
                     <h4>Auto Sync</h4>
-                    <div class="backup-value ${backupStats.autoSyncEnabled ? 'enabled' : 'disabled'}">
-                        ${backupStats.autoSyncEnabled ? '✅ On' : '❌ Off'}
+                    <div class="backup-value ${backupStats.autoSyncEnabled ? "enabled" : "disabled"}">
+                        ${backupStats.autoSyncEnabled ? "✅ On" : "❌ Off"}
                     </div>
                 </div>
             </div>
         `;
-    };
+  };
 
-    window.loadUserStats = () => {
-        const userProfile = window.fitnessApp?.getState('user.profile') || {};
-        const workoutStats = window.fitnessApp?.getState('workout') || {};
+  window.loadUserStats = () => {
+    const userProfile = window.fitnessApp?.getState("user.profile") || {};
+    const workoutStats = window.fitnessApp?.getState("workout") || {};
 
-        document.getElementById('user-stats').innerHTML = `
+    document.getElementById("user-stats").innerHTML = `
             <div class="user-overview">
                 <div class="user-card">
                     <h4>User ID</h4>
-                    <div class="user-value">${userProfile.id || 'Guest'}</div>
+                    <div class="user-value">${userProfile.id || "Guest"}</div>
                 </div>
                 <div class="user-card">
                     <h4>Total Workouts</h4>
@@ -203,133 +225,140 @@ export default function AdminDashboard() {
                 </div>
                 <div class="user-card">
                     <h4>Workout Active</h4>
-                    <div class="user-value ${workoutStats.isActive ? 'active' : 'inactive'}">
-                        ${workoutStats.isActive ? '🏃 Yes' : '⏸️ No'}
+                    <div class="user-value ${workoutStats.isActive ? "active" : "inactive"}">
+                        ${workoutStats.isActive ? "🏃 Yes" : "⏸️ No"}
                     </div>
                 </div>
             </div>
         `;
+  };
+
+  window.getStorageUsage = () => {
+    let totalSize = 0;
+    const details = {};
+
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        const size = new Blob([localStorage[key]]).size;
+        totalSize += size;
+        if (key.startsWith("fitness_")) {
+          details[key] = Math.round(size / 1024);
+        }
+      }
+    }
+
+    return {
+      used: Math.round(totalSize / 1024),
+      details,
+    };
+  };
+
+  window.setupRealTimeUpdates = () => {
+    // Update every 5 seconds
+    setInterval(() => {
+      if (document.getElementById("admin-dashboard")) {
+        loadSystemStats();
+        loadErrorStats();
+        loadPerformanceMetrics();
+      }
+    }, 5000);
+  };
+
+  // Action handlers
+  window.clearErrors = () => {
+    if (window.errorHandler) {
+      window.errorHandler.clearErrors();
+      loadErrorStats();
+      alert("Error log cleared");
+    }
+  };
+
+  window.clearStorage = () => {
+    if (
+      confirm(
+        "Are you sure you want to clear all storage? This will reset the app.",
+      )
+    ) {
+      localStorage.clear();
+      location.reload();
+    }
+  };
+
+  window.createBackup = async () => {
+    try {
+      const result = await window.fitnessApp.backup.create();
+      alert(`Backup created: ${result.backupId}`);
+      loadBackupStats();
+    } catch (error) {
+      alert(`Backup failed: ${error.message}`);
+    }
+  };
+
+  window.exportLogs = () => {
+    const logs = {
+      errors: window.errorHandler?.getErrorStats() || {},
+      performance: window.performanceMonitor?.exportData() || {},
+      system: {
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+      },
     };
 
-    window.getStorageUsage = () => {
-        let totalSize = 0;
-        const details = {};
+    const dataStr = JSON.stringify(logs, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `fitness-debug-${Date.now()}.json`;
+    link.click();
+  };
 
-        for (let key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
-                const size = new Blob([localStorage[key]]).size;
-                totalSize += size;
-                if (key.startsWith('fitness_')) {
-                    details[key] = Math.round(size / 1024);
-                }
-            }
-        }
+  window.runDiagnostics = () => {
+    const diagnostics = [];
 
-        return {
-            used: Math.round(totalSize / 1024),
-            details
-        };
-    };
+    // Memory check
+    if (performance.memory) {
+      const usage =
+        performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit;
+      if (usage > 0.8) {
+        diagnostics.push("⚠️ High memory usage detected");
+      }
+    }
 
-    window.setupRealTimeUpdates = () => {
-        // Update every 5 seconds
-        setInterval(() => {
-            if (document.getElementById('admin-dashboard')) {
-                loadSystemStats();
-                loadErrorStats();
-                loadPerformanceMetrics();
-            }
-        }, 5000);
-    };
+    // Error check
+    const errorStats = window.errorHandler?.getErrorStats();
+    if (errorStats?.totalErrors > 20) {
+      diagnostics.push("⚠️ High error count detected");
+    }
 
-    // Action handlers
-    window.clearErrors = () => {
-        if (window.errorHandler) {
-            window.errorHandler.clearErrors();
-            loadErrorStats();
-            alert('Error log cleared');
-        }
-    };
+    // Storage check
+    const storage = getStorageUsage();
+    if (storage.used > 5000) {
+      // 5MB
+      diagnostics.push("⚠️ High storage usage detected");
+    }
 
-    window.clearStorage = () => {
-        if (confirm('Are you sure you want to clear all storage? This will reset the app.')) {
-            localStorage.clear();
-            location.reload();
-        }
-    };
+    // Performance check
+    const perfSummary = window.performanceMonitor?.getPerformanceSummary();
+    if (perfSummary?.metrics?.longTasks?.count > 10) {
+      diagnostics.push("⚠️ Performance issues detected");
+    }
 
-    window.createBackup = async () => {
-        try {
-            const result = await window.fitnessApp.backup.create();
-            alert(`Backup created: ${result.backupId}`);
-            loadBackupStats();
-        } catch (error) {
-            alert(`Backup failed: ${error.message}`);
-        }
-    };
-
-    window.exportLogs = () => {
-        const logs = {
-            errors: window.errorHandler?.getErrorStats() || {},
-            performance: window.performanceMonitor?.exportData() || {},
-            system: {
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                url: window.location.href
-            }
-        };
-
-        const dataStr = JSON.stringify(logs, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `fitness-debug-${Date.now()}.json`;
-        link.click();
-    };
-
-    window.runDiagnostics = () => {
-        const diagnostics = [];
-
-        // Memory check
-        if (performance.memory) {
-            const usage = performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit;
-            if (usage > 0.8) {
-                diagnostics.push('⚠️ High memory usage detected');
-            }
-        }
-
-        // Error check
-        const errorStats = window.errorHandler?.getErrorStats();
-        if (errorStats?.totalErrors > 20) {
-            diagnostics.push('⚠️ High error count detected');
-        }
-
-        // Storage check
-        const storage = getStorageUsage();
-        if (storage.used > 5000) { // 5MB
-            diagnostics.push('⚠️ High storage usage detected');
-        }
-
-        // Performance check
-        const perfSummary = window.performanceMonitor?.getPerformanceSummary();
-        if (perfSummary?.metrics?.longTasks?.count > 10) {
-            diagnostics.push('⚠️ Performance issues detected');
-        }
-
-        const resultDiv = document.getElementById('diagnostics-result');
-        if (diagnostics.length === 0) {
-            resultDiv.innerHTML = '<div class="diagnostic-ok">✅ All systems OK</div>';
-        } else {
-            resultDiv.innerHTML = `
+    const resultDiv = document.getElementById("diagnostics-result");
+    if (diagnostics.length === 0) {
+      resultDiv.innerHTML =
+        '<div class="diagnostic-ok">✅ All systems OK</div>';
+    } else {
+      resultDiv.innerHTML = `
                 <div class="diagnostic-warnings">
-                    ${diagnostics.map(d => `<div class="diagnostic-item">${d}</div>`).join('')}
+                    ${diagnostics.map((d) => `<div class="diagnostic-item">${d}</div>`).join("")}
                 </div>
             `;
-        }
-    };
+    }
+  };
 
-    return `
+  return `
         <div class="admin-dashboard" id="admin-dashboard">
             <div class="admin-header">
                 <h1>🔧 Admin Dashboard</h1>

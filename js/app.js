@@ -1,13 +1,14 @@
-import Navbar from "./components/Navbar.js";
-import FloatCoach from "./components/FloatCoach.js";
-import Home from "./views/Home.js";
-import Workouts from "./views/Workouts.js";
-import Exercises from "./views/Exercises.js";
-import ActiveWorkout from "./views/ActiveWorkout.js";
-import Profile from "./views/Profile.js";
-import Progress from "./views/Progress.js";
-import Nutrition from "./views/Nutrition.js";
-import Onboarding from "./views/Onboarding.js";
+import Navbar from "./components/Navbar.js?v=2";
+import FloatCoach from "./components/FloatCoach.js?v=2";
+import Home from "./views/Home.js?v=2";
+import Workouts from "./views/Workouts.js?v=2";
+import Exercises from "./views/Exercises.js?v=2";
+import ActiveWorkout from "./views/ActiveWorkout.js?v=2";
+import Profile from "./views/Profile.js?v=2";
+import Progress from "./views/Progress.js?v=2";
+import Nutrition from "./views/Nutrition.js?v=2";
+import Onboarding from "./views/Onboarding.js?v=2";
+import AdminDashboard from "./views/AdminDashboard.js?v=2";
 import { notificationManager } from "./utils/NotificationManager.js";
 import { stateManager, actions } from "./utils/StateManager.js";
 import { config } from "./utils/Config.js";
@@ -16,6 +17,7 @@ import { authService } from "./services/AuthService.js";
 import { backupService } from "./services/BackupService.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
+import { testRunner } from "./utils/TestRunner.js";
 
 // Enhanced Router with state management and metadata
 const routes = {
@@ -69,7 +71,7 @@ const routes = {
     analytics: "page_onboarding",
   },
   "/admin": {
-    component: () => import("./views/AdminDashboard.js").then(m => m.default()),
+    component: AdminDashboard,
     title: "Admin Dashboard",
     requiresAuth: false,
     analytics: "page_admin",
@@ -196,9 +198,18 @@ async function router() {
       return;
     }
 
+    // Debug route resolution
+    console.log('🔍 Debug Route Resolution:');
+    console.log('Available routes:', Object.keys(routes));
+    console.log('Current path:', JSON.stringify(path));
+    console.log('Route object:', route);
+    console.log('AdminDashboard component:', AdminDashboard);
+
     // Handle route not found
     if (!route) {
-      console.warn(`Route not found: ${path}`);
+      console.error(`❌ Route not found: ${path}`);
+      console.error('Available routes:', Object.keys(routes));
+      console.error('Route lookup result:', routes[path]);
       notificationManager.warning(
         "Pagina non trovata",
         "La pagina richiesta non esiste. Verrai reindirizzato alla home.",
@@ -223,6 +234,7 @@ async function router() {
 
     // Get view component
     const ViewComponent = route.component;
+    console.log('🎯 ViewComponent for', path, ':', ViewComponent?.name || ViewComponent);
 
     // Add route transition animation
     if (config.get("userPreferences.animations", true)) {
@@ -231,7 +243,9 @@ async function router() {
 
     // Render view with error boundary
     try {
+      console.log('🎨 Rendering view for:', path);
       const content = await renderViewWithErrorBoundary(ViewComponent, path);
+      console.log('✅ View rendered successfully for:', path);
       mainContent.innerHTML = content;
 
       renderLayout();
@@ -490,6 +504,11 @@ function initViewCommonFeatures(path, route) {
 
       // Initialize backup service
       await backupService.init();
+
+      // Initialize test runner in debug mode
+      if (config.isDebugMode()) {
+        testRunner.init();
+      }
 
       if (config.isDebugMode()) {
         console.log('🚀 Core services initialized');
@@ -820,6 +839,18 @@ window.fitnessApp = {
   setApiKey: config.setApiKey.bind(config),
   setUserPreference: config.setUserPreference.bind(config),
 
+  // Testing (only in debug mode)
+  ...(config.isDebugMode() && {
+    test: {
+      run: testRunner.runAllTests.bind(testRunner),
+      runCritical: testRunner.runCriticalTests.bind(testRunner),
+      show: testRunner.showTestUI.bind(testRunner),
+      hide: testRunner.hideTestUI.bind(testRunner),
+      export: testRunner.exportResults.bind(testRunner),
+      results: testRunner.getResults.bind(testRunner)
+    }
+  }),
+
   // Debug helpers (only in debug mode)
   ...(config.isDebugMode() && {
     _debug: {
@@ -829,6 +860,7 @@ window.fitnessApp = {
       backupService,
       errorHandler,
       performanceMonitor,
+      testRunner,
       config,
       routes,
       navigationHistory,
