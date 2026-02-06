@@ -12,6 +12,10 @@ import { notificationManager } from "./utils/NotificationManager.js";
 import { stateManager, actions } from "./utils/StateManager.js";
 import { config } from "./utils/Config.js";
 import { analytics } from "./services/Analytics.js";
+import { authService } from "./services/AuthService.js";
+import { backupService } from "./services/BackupService.js";
+import { errorHandler } from "./utils/ErrorHandler.js";
+import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 
 // Enhanced Router with state management and metadata
 const routes = {
@@ -63,6 +67,13 @@ const routes = {
     title: "Configurazione",
     requiresAuth: false,
     analytics: "page_onboarding",
+  },
+  "/admin": {
+    component: () => import("./views/AdminDashboard.js").then(m => m.default()),
+    title: "Admin Dashboard",
+    requiresAuth: false,
+    analytics: "page_admin",
+    hideNavbar: true,
   },
 };
 
@@ -451,8 +462,43 @@ function initViewCommonFeatures(path, route) {
           navigateTo("/progress");
           break;
       }
+    } catch (error) {
+      errorHandler.handleError({
+        type: 'init',
+        message: 'App initialization failed',
+        error: error,
+        fatal: true
+      });
     }
   });
+
+  // Initialize core services
+  async function initializeCoreServices() {
+    try {
+      // Initialize performance monitoring first
+      if (!performanceMonitor.isInitialized) {
+        performanceMonitor.init();
+      }
+
+      // Initialize error handling
+      if (!errorHandler.isInitialized) {
+        errorHandler.init();
+      }
+
+      // Initialize authentication service
+      await authService.init();
+
+      // Initialize backup service
+      await backupService.init();
+
+      if (config.isDebugMode()) {
+        console.log('🚀 Core services initialized');
+      }
+    } catch (error) {
+      console.error('Core services initialization failed:', error);
+      throw error;
+    }
+  }
 
   // Update page visibility tracking
   document.addEventListener("visibilitychange", () => {
@@ -475,6 +521,9 @@ window.addEventListener("load", async () => {
   // Initialize app with enhanced error handling
   try {
     actions.setLoading(true);
+
+    // Initialize core systems
+    await initializeCoreServices();
 
     // Initialize state manager
     await initializeAppState();
@@ -510,21 +559,53 @@ window.addEventListener("load", async () => {
 
 // Initialize app state
 async function initializeAppState() {
-  // Load user profile into state
-  const hasProfile = localStorage.getItem("fitness_profile");
-  if (hasProfile) {
-    try {
-      const profile = JSON.parse(hasProfile);
-      actions.setUserProfile(profile);
-    } catch (error) {
-      console.warn("Failed to load user profile:", error);
-    }
-  }
+  try {
+    // Check if user is authenticated
+    const isAuthenticated = await authService.isAuthenticated();
 
-  // Subscribe to state changes for debugging
-  if (config.isDebugMode()) {
-    stateManager.subscribe("*", (value, oldValue, path) => {
-      console.log(`🗃️ State changed: ${path}`, { old: oldValue, new: value });
+    if (isAuthenticated) {
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser) {
+        actions.setUserProfile(authService.sanitizeUserData(currentUser));
+      }
+    }
+
+    // Initialize backup system
+    stateManager.setState('backup.isEnabled', config.isFeatureEnabled('backup'));
+    stateManager.setState('backup.lastBackupTime', 0);
+    stateManager.setState('backup.hasPendingSync', false);
+
+    // Subscribe to state changes for debugging
+    if (config.isDebugMode()) {
+      stateManager.subscribe("*", (value, oldValue, path) => {
+        console.log(`🗃️ State changed: ${path}`, { old: oldValue, new: value });
+      });
+    }
+
+    // Subscribe to user profile changes for backup
+    stateManager.subscribe("user.profile", (profile) => {
+      if (profile && config.isFeatureEnabled('backup')) {
+        backupService.scheduleBackup();
+      }
+    });
+
+    // Subscribe to workout completion for backup
+    stateManager.subscribe("workout.isActive", (isActive, wasActive) => {
+      if (wasActive && !isActive) {
+        // Workout just ended, schedule backup
+        setTimeout(() => {
+          if (config.isFeatureEnabled('backup')) {
+            backupService.scheduleBackup();
+          }
+        }, 5000);
+      }
+    });
+
+  } catch (error) {
+    errorHandler.handleError({
+      type: 'state_init',
+      message: 'Failed to initialize app state',
+      error: error
     });
   }
 }
@@ -537,52 +618,27 @@ async function initializeRouter() {
 
 // Set up global event listeners
 function setupGlobalEventListeners() {
-  // Global error handler
+  // Global error handler - delegate to ErrorHandler
   window.addEventListener("error", (e) => {
-    console.error("Global error:", e.error);
-
-    if (config.isFeatureEnabled("analytics")) {
-      analytics.logEvent("global_error", {
-        message: e.error?.message,
-        filename: e.filename,
-        lineno: e.lineno,
-      });
-    }
-
-    notificationManager.error(
-      "Errore dell'App",
-      "Si è verificato un errore imprevisto.",
-      {
-        actions: [
-          {
-            text: "Ricarica",
-            onClick: () => window.location.reload(),
-            type: "primary",
-          },
-          {
-            text: "Ignora",
-            onClick: () => {},
-            type: "secondary",
-          },
-        ],
-      },
-    );
+    errorHandler.handleError({
+      type: 'javascript',
+      message: e.message,
+      filename: e.filename,
+      lineno: e.lineno,
+      colno: e.colno,
+      error: e.error,
+      stack: e.error?.stack
+    });
   });
 
-  // Unhandled promise rejection handler
+  // Unhandled promise rejection handler - delegate to ErrorHandler
   window.addEventListener("unhandledrejection", (e) => {
-    console.error("Unhandled promise rejection:", e.reason);
-
-    if (config.isFeatureEnabled("analytics")) {
-      analytics.logEvent("unhandled_promise_rejection", {
-        reason: e.reason?.toString(),
-      });
-    }
-
-    notificationManager.warning(
-      "Attenzione",
-      "Alcune funzionalità potrebbero non funzionare correttamente.",
-    );
+    errorHandler.handleError({
+      type: 'promise',
+      message: 'Unhandled Promise Rejection',
+      reason: e.reason,
+      stack: e.reason?.stack
+    });
   });
 
   // Online/offline status
@@ -706,6 +762,48 @@ window.fitnessApp = {
   dispatch: stateManager.dispatch.bind(stateManager),
   actions,
 
+  // Authentication
+  auth: {
+    login: authService.login.bind(authService),
+    logout: authService.logout.bind(authService),
+    createAccount: authService.createAccount.bind(authService),
+    updateProfile: authService.updateUserProfile.bind(authService),
+    deleteAccount: authService.deleteAccount.bind(authService),
+    isAuthenticated: authService.isAuthenticated.bind(authService),
+    getCurrentUser: authService.getCurrentUser.bind(authService),
+    enableBiometric: authService.enableBiometricAuth.bind(authService)
+  },
+
+  // Backup and sync
+  backup: {
+    create: backupService.createBackup.bind(backupService),
+    restore: backupService.restoreBackup.bind(backupService),
+    export: backupService.exportData.bind(backupService),
+    import: backupService.importData.bind(backupService),
+    sync: backupService.syncToCloud.bind(backupService),
+    getList: backupService.getBackupList.bind(backupService),
+    getStats: backupService.getBackupStats.bind(backupService)
+  },
+
+  // Error handling
+  error: {
+    log: errorHandler.logError.bind(errorHandler),
+    logWarning: errorHandler.logWarning.bind(errorHandler),
+    logInfo: errorHandler.logInfo.bind(errorHandler),
+    getStats: errorHandler.getErrorStats.bind(errorHandler),
+    clear: errorHandler.clearErrors.bind(errorHandler)
+  },
+
+  // Performance monitoring
+  performance: {
+    getMetrics: performanceMonitor.getMetrics.bind(performanceMonitor),
+    getSummary: performanceMonitor.getPerformanceSummary.bind(performanceMonitor),
+    getRecommendations: performanceMonitor.getRecommendations.bind(performanceMonitor),
+    mark: performanceMonitor.mark.bind(performanceMonitor),
+    measure: performanceMonitor.measure.bind(performanceMonitor),
+    measureFunction: performanceMonitor.measureFunction.bind(performanceMonitor)
+  },
+
   // Utilities
   showNotification: (type, title, message, options) => {
     return notificationManager[type]
@@ -719,12 +817,18 @@ window.fitnessApp = {
 
   // Configuration
   config: config.exportConfig(),
+  setApiKey: config.setApiKey.bind(config),
+  setUserPreference: config.setUserPreference.bind(config),
 
   // Debug helpers (only in debug mode)
   ...(config.isDebugMode() && {
     _debug: {
       stateManager,
       notificationManager,
+      authService,
+      backupService,
+      errorHandler,
+      performanceMonitor,
       config,
       routes,
       navigationHistory,
