@@ -1,0 +1,20 @@
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Workspace/Agent files
+.gemini/
+brain/
+implementation_plan.md
+task.md
+walkthrough.md
+node_modules/
+dist/
+build/
