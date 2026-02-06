@@ -1,7 +1,11 @@
 import { dataManager } from '../services/DataManager.js';
+import { emailService } from '../services/EmailService.js';
 
 export default function Home() {
     const user = dataManager.getCurrentUser();
+
+    // Simulate Weekly Recap trigger on Home load
+    setTimeout(() => emailService.sendWeeklyRecap(), 2000);
     // Get a recommendation (taking the first one for now)
     const workouts = dataManager.getWorkouts();
     const recommended = workouts[0] || {};
@@ -54,7 +58,7 @@ export default function Home() {
                 <div class="cat-pill active">🔥 Dimagrimento</div>
                 <div class="cat-pill">💪 Massa</div>
                 <div class="cat-pill">🧘 Stretching</div>
-                <div class="cat-pill">🏃 Cardio</div>
+                <div class="cat-pill" onclick="window.location.hash='#/run'">🏃 Corsa</div>
             </div>
         </div>
 

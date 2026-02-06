@@ -131,6 +131,22 @@ export default function ActiveWorkout() {
                 <button class="btn btn-outline" onclick="window.finishWorkout()">Termina</button>
                 <button class="btn btn-primary" onclick="window.handleNextSet()">Prossimo Set</button>
             </div>
+
+            <!-- YouTube Music / Spotify Mini-Player -->
+            <div class="card music-player">
+                <div class="music-info">
+                    <i class="fab fa-spotify"></i>
+                    <div class="track-details">
+                        <span class="track-name" id="track-name">Spotify Connected</span>
+                        <span class="artist-name">Tocca per controllare la musica</span>
+                    </div>
+                </div>
+                <div class="music-controls">
+                    <button onclick="alert('Spotify: Prev Track')"><i class="fas fa-step-backward"></i></button>
+                    <button class="play-btn" onclick="alert('Spotify: Play/Pause')"><i class="fas fa-play"></i></button>
+                    <button onclick="alert('Spotify: Next Track')"><i class="fas fa-step-forward"></i></button>
+                </div>
+            </div>
         </div>
 
         <style>
@@ -213,6 +229,25 @@ export default function ActiveWorkout() {
                 border: 1px solid var(--text-secondary);
                 color: var(--text-primary);
             }
+
+            /* Music Player */
+            .music-player {
+                margin-top: var(--spacing-lg);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: var(--spacing-sm) var(--spacing-md);
+                background: linear-gradient(135deg, #1db954, #191414); /* Spotify Colors */
+                border: none;
+            }
+            .music-info { display: flex; align-items: center; gap: 10px; }
+            .music-info i { font-size: 1.5rem; color: #fff; }
+            .track-details { display: flex; flex-direction: column; }
+            .track-name { font-weight: bold; font-size: 0.9rem; }
+            .artist-name { font-size: 0.75rem; opacity: 0.8; }
+            .music-controls { display: flex; gap: 15px; }
+            .music-controls button { background: none; border: none; color: white; cursor: pointer; font-size: 1.1rem; }
+            .music-controls .play-btn { font-size: 1.4rem; }
         </style>
     `;
 }

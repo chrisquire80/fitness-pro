@@ -5,9 +5,9 @@ export default function Navbar() {
                 <i class="fas fa-home"></i>
                 <span>Home</span>
             </a>
-            <a href="#/exercises" class="nav-link">
-                <i class="fas fa-search"></i>
-                <span>Esplora</span>
+            <a href="#/nutrition" class="nav-link">
+                <i class="fas fa-apple-alt"></i>
+                <span>Nutrizione</span>
             </a>
             <a href="#/progress" class="nav-link">
                 <i class="fas fa-chart-line"></i>

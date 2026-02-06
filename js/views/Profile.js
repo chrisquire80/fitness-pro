@@ -49,6 +49,24 @@ export default function Profile() {
                 </div>
                 <button type="submit" class="btn btn-primary">Salva Modifiche</button>
             </form>
+
+            <div class="profile-links" style="margin-top: var(--spacing-lg);">
+                <h3>Community & Supporto</h3>
+                <div class="links-grid">
+                    <a href="https://discord.gg/your-invite" target="_blank" class="card link-card">
+                        <i class="fab fa-discord"></i>
+                        <span>Discord Community</span>
+                    </a>
+                    <a href="https://t.me/your-channel" target="_blank" class="card link-card">
+                        <i class="fab fa-telegram"></i>
+                        <span>Canale Telegram</span>
+                    </a>
+                    <a href="https://tally.so/r/your-id" target="_blank" class="card link-card">
+                        <i class="fas fa-bug"></i>
+                        <span>Segnala un Bug</span>
+                    </a>
+                </div>
+            </div>
             
             <div class="danger-zone">
                 <hr>
@@ -97,6 +115,22 @@ export default function Profile() {
                 border: 1px solid #ef4444;
                 width: 100%;
             }
+            .links-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: var(--spacing-sm);
+                margin-top: var(--spacing-sm);
+            }
+            .link-card {
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-md);
+                text-decoration: none;
+                color: var(--text-primary);
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+            .link-card i { font-size: 1.2rem; color: var(--accent-secondary); }
+            .link-card:hover { border-color: var(--accent-primary); }
 
         </style>
     `;

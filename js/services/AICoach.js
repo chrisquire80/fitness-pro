@@ -39,6 +39,38 @@ class AICoach {
         return `Ciao! Pronto per la sfida di oggi? Ho preparato un allenamento perfetto per il tuo obiettivo di **${user.goal === 'lose' ? 'tonificazione' : 'ipertrofia'}**.`;
     }
 
+    /**
+     * askAura(userMessage)
+     * Calls Gemini API to get a real-time response.
+     */
+    async askAura(userMessage) {
+        const user = dataManager.getCurrentUser();
+        const apiKey = "YOUR_GEMINI_API_KEY"; // Placeholder for the user
+
+        if (apiKey === "YOUR_GEMINI_API_KEY") {
+            return "Per abilitare le risposte reali dell'AI, inserisci la tua API Key in `AICoach.js`. Nel frattempo: " + this.getQuickAdvice('motivation');
+        }
+
+        const prompt = `Sei Aura, un personal trainer AI gentile e motivante. 
+        L'utente si chiama ${user.name}, il suo obiettivo è ${user.goal}. 
+        Rispondi in modo breve e professionale alla domanda: ${userMessage}`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        } catch (error) {
+            console.error("Gemini API Error:", error);
+            return "Scusa, ho avuto un piccolo corto circuito. Riprova più tardi! ⚡";
+        }
+    }
+
     getQuickAdvice(topic) {
         const advices = {
             'soreness': "Il dolore muscolare (DOMS) è normale. Se è intenso, concentrati sul cardio leggero o stretching oggi.",
