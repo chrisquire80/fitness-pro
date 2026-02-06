@@ -71,7 +71,7 @@ const routes = {
     analytics: "page_onboarding",
   },
   "/admin": {
-    component: AdminDashboard,
+    component: AdminDashboard, // Use imported component directly
     title: "Admin Dashboard",
     requiresAuth: false,
     analytics: "page_admin",
@@ -208,8 +208,7 @@ async function router() {
     // Handle route not found
     if (!route) {
       console.error(`❌ Route not found: ${path}`);
-      console.error('Available routes:', Object.keys(routes));
-      console.error('Route lookup result:', routes[path]);
+      console.log('Available routes:', Object.keys(routes));
       notificationManager.warning(
         "Pagina non trovata",
         "La pagina richiesta non esiste. Verrai reindirizzato alla home.",
@@ -464,17 +463,19 @@ function initGenericView(path) {
 function initViewCommonFeatures(path, route) {
   // Add route-specific keyboard shortcuts
   document.addEventListener("keydown", (e) => {
-    if (e.altKey) {
-      switch (e.key) {
-        case "h":
-          navigateTo("/");
-          break;
-        case "w":
-          navigateTo("/workouts");
-          break;
-        case "p":
-          navigateTo("/progress");
-          break;
+    try {
+      if (e.altKey) {
+        switch (e.key) {
+          case "h":
+            navigateTo("/");
+            break;
+          case "w":
+            navigateTo("/workouts");
+            break;
+          case "p":
+            navigateTo("/progress");
+            break;
+        }
       }
     } catch (error) {
       errorHandler.handleError({

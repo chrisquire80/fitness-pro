@@ -3,9 +3,9 @@
  * Provides offline functionality and caching for PWA experience
  */
 
-const CACHE_NAME = 'fitness-pro-v1.0.0';
-const STATIC_CACHE = 'fitness-static-v1';
-const DYNAMIC_CACHE = 'fitness-dynamic-v1';
+const CACHE_NAME = 'fitness-pro-v1.0.1';
+const STATIC_CACHE = 'fitness-static-v2';
+const DYNAMIC_CACHE = 'fitness-dynamic-v2';
 
 // Files to cache for offline functionality
 const STATIC_ASSETS = [
@@ -18,10 +18,17 @@ const STATIC_ASSETS = [
   '/js/services/DataManager.js',
   '/js/services/AICoach.js',
   '/js/services/Analytics.js',
+  '/js/services/AuthService.js',
+  '/js/services/BackupService.js',
   '/js/services/NutritionService.js',
   '/js/services/EmailService.js',
   '/js/utils/NotificationManager.js',
   '/js/utils/AudioGuide.js',
+  '/js/utils/Config.js',
+  '/js/utils/ErrorHandler.js',
+  '/js/utils/PerformanceMonitor.js',
+  '/js/utils/StateManager.js',
+  '/js/utils/TestRunner.js',
   '/js/views/Home.js',
   '/js/views/Exercises.js',
   '/js/views/ActiveWorkout.js',
@@ -30,7 +37,8 @@ const STATIC_ASSETS = [
   '/js/views/Nutrition.js',
   '/js/views/Onboarding.js',
   '/js/views/Workouts.js',
-  '/js/views/RunTracker.js'
+  '/js/views/RunTracker.js',
+  '/js/views/AdminDashboard.js'
 ];
 
 // External resources that can be cached
@@ -343,7 +351,7 @@ self.addEventListener('notificationclick', (event) => {
  */
 function isStaticAsset(url) {
   return STATIC_ASSETS.some(asset => url.includes(asset)) ||
-         EXTERNAL_RESOURCES.some(resource => url.startsWith(resource));
+    EXTERNAL_RESOURCES.some(resource => url.startsWith(resource));
 }
 
 function isAPIRequest(url) {
@@ -352,8 +360,8 @@ function isAPIRequest(url) {
 
 function isImageRequest(url) {
   return /\.(jpg|jpeg|png|gif|webp|svg|ico)$/i.test(url) ||
-         url.includes('images.unsplash.com') ||
-         url.includes('image_url');
+    url.includes('images.unsplash.com') ||
+    url.includes('image_url');
 }
 
 /**

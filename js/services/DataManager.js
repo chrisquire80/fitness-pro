@@ -91,6 +91,8 @@ class DataManager {
         });
       }
 
+      this.isInitialized = true;
+
       // Migrate from old storage keys if needed
       this._migrateStorage();
 
@@ -101,8 +103,6 @@ class DataManager {
       if (!localStorage.getItem(this.STORAGE_KEYS.WORKOUTS)) {
         this.seedWorkouts();
       }
-
-      this.isInitialized = true;
 
       // Validate data integrity after initialization - with delay to ensure everything is ready
       setTimeout(() => {

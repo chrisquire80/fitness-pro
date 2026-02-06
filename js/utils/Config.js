@@ -426,23 +426,20 @@ class Config {
    * Export configuration for debugging
    */
   exportConfig() {
-    const exportConfig = { ...this.config };
+    if (!this.config) return {};
+    const exportConfig = JSON.parse(JSON.stringify(this.config));
 
     // Remove sensitive data
     if (exportConfig.apiKeys && typeof exportConfig.apiKeys === "object") {
       Object.keys(exportConfig.apiKeys).forEach((key) => {
-        if (typeof exportConfig.apiKeys[key] === "string") {
-          exportConfig.apiKeys[key] = exportConfig.apiKeys[key].startsWith(
-            "YOUR_",
-          )
-            ? exportConfig.apiKeys[key]
+        const value = exportConfig.apiKeys[key];
+        if (typeof value === "string") {
+          exportConfig.apiKeys[key] = value.startsWith("YOUR_")
+            ? value
             : "***HIDDEN***";
-        } else if (
-          exportConfig.apiKeys[key] &&
-          typeof exportConfig.apiKeys[key] === "object"
-        ) {
-          Object.keys(exportConfig.apiKeys[key]).forEach((subKey) => {
-            exportConfig.apiKeys[key][subKey] = "***HIDDEN***";
+        } else if (value && typeof value === "object") {
+          Object.keys(value).forEach((subKey) => {
+            value[subKey] = "***HIDDEN***";
           });
         }
       });
