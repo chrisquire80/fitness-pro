@@ -4,6 +4,7 @@ export default function Navbar() {
   const navItems = [
     { path: "/", icon: "fas fa-home", label: "Home" },
     { path: "/exercises", icon: "fas fa-search", label: "Esplora" },
+    { path: "/videos", icon: "fas fa-video", label: "Video" },
     { path: "/progress", icon: "fas fa-chart-line", label: "Progressi" },
     { path: "/gamification", icon: "fas fa-trophy", label: "Risultati" },
     { path: "/profile", icon: "fas fa-user", label: "Profilo" },

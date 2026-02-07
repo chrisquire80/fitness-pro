@@ -9,6 +9,7 @@ import Profile from "./views/Profile.js?v=2";
 import Progress from "./views/Progress.js?v=2";
 import Nutrition from "./views/Nutrition.js?v=2";
 import Gamification from "./views/Gamification.js?v=2";
+import VideoLibrary from "./views/VideoLibrary.js?v=2";
 import Onboarding from "./views/Onboarding.js?v=2";
 import AdminDashboard from "./views/AdminDashboard.js?v=2";
 import RunTracker from "./views/RunTracker.js?v=2";
@@ -21,6 +22,7 @@ import { backupService } from "./services/BackupService.js";
 import { syncQueueService } from "./services/SyncQueueService.js";
 import { indexedDBService } from "./services/IndexedDBService.js";
 import { gamificationService } from "./services/GamificationService.js";
+import { videoService } from "./services/VideoService.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
@@ -52,6 +54,9 @@ async function initializeCoreServices() {
 
     // Initialize gamification service for achievements and challenges
     await gamificationService.init();
+
+    // Initialize video service for workout videos
+    await videoService.init();
 
     // Initialize test runner in debug mode
     if (config.isDebugMode()) {
@@ -122,6 +127,12 @@ const routes = {
     title: "Progressione",
     requiresAuth: true,
     analytics: "page_gamification",
+  },
+  "/videos": {
+    component: VideoLibrary,
+    title: "Video Library",
+    requiresAuth: true,
+    analytics: "page_videos",
   },
   "/onboarding": {
     component: Onboarding,
