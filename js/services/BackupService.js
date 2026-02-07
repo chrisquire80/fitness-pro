@@ -74,21 +74,70 @@ class BackupService {
 
   /**
    * Initialize Firebase (if API keys are configured)
+   * Loads Firebase SDK from CDN and initializes Firestore for cloud backup
    */
   async initializeFirebase() {
     const firebaseConfig = config.get("apiKeys.firebase");
 
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
       console.warn("Firebase not configured for backup");
+      this.firebaseInitialized = false;
       return;
     }
 
     try {
-      // In a real implementation, you would initialize Firebase SDK here
-      console.log("Firebase backup ready (mock implementation)");
+      // Load Firebase SDK from CDN if not already loaded
+      if (!window.firebase) {
+        await this._loadFirebaseSDK();
+      }
+
+      // Initialize Firebase with provided config
+      if (window.firebase && !window.firebase.apps.length) {
+        window.firebase.initializeApp(firebaseConfig);
+        this.firebaseDb = window.firebase.firestore();
+        this.firebaseInitialized = true;
+
+        if (config.isDebugMode()) {
+          console.log("✅ Firebase initialized for cloud backup");
+        }
+      } else if (window.firebase?.apps.length > 0) {
+        // Firebase already initialized
+        this.firebaseDb = window.firebase.firestore();
+        this.firebaseInitialized = true;
+
+        if (config.isDebugMode()) {
+          console.log("✅ Firebase already initialized, using existing instance");
+        }
+      }
     } catch (error) {
       console.error("Firebase initialization failed:", error);
+      this.firebaseInitialized = false;
     }
+  }
+
+  /**
+   * Load Firebase SDK from CDN
+   */
+  async _loadFirebaseSDK() {
+    return new Promise((resolve, reject) => {
+      // Load main Firebase script
+      const scriptMain = document.createElement("script");
+      scriptMain.src = "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+      scriptMain.onload = () => {
+        // Load Firestore module
+        const scriptFirestore = document.createElement("script");
+        scriptFirestore.src = "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        scriptFirestore.onload = () => resolve();
+        scriptFirestore.onerror = () => {
+          reject(new Error("Failed to load Firebase Firestore SDK"));
+        };
+        document.head.appendChild(scriptFirestore);
+      };
+      scriptMain.onerror = () => {
+        reject(new Error("Failed to load Firebase SDK"));
+      };
+      document.head.appendChild(scriptMain);
+    });
   }
 
   /**
