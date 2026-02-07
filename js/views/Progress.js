@@ -8,28 +8,67 @@ export default function Progress() {
     const totalWorkouts = logs.length;
     const totalMinutes = logs.reduce((acc, l) => acc + (l.duration_real ? l.duration_real / 60 : 20), 0); // Mock duration if missing
 
+    // Generate last 7 days of activity data
+    const getLast7DaysData = () => {
+        const days = [];
+        const dataMap = {};
+
+        // Initialize last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const shortDate = date.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+            days.push(shortDate);
+            dataMap[dateStr] = 0;
+        }
+
+        // Aggregate workout minutes by date
+        logs.forEach(log => {
+            const logDate = log.date || log.created_at?.split('T')[0];
+            if (logDate && dataMap.hasOwnProperty(logDate)) {
+                const minutes = log.duration_real ? log.duration_real / 60 : 20;
+                dataMap[logDate] += Math.round(minutes);
+            }
+        });
+
+        // Get values in same order as days
+        const values = [];
+        const dateKeys = Object.keys(dataMap);
+        dateKeys.slice(-7).forEach(dateKey => {
+            values.push(dataMap[dateKey]);
+        });
+
+        return { labels: days, data: values };
+    };
+
+    const chartData = getLast7DaysData();
+
     // Initialize Chart after render
     setTimeout(() => {
         const ctx = document.getElementById('weightChart');
-        if (ctx) {
+        if (ctx && window.Chart) {
             new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: ['Gen', 'Feb', 'Mar', 'Apr', 'Mag'], // Mock
+                    labels: chartData.labels,
                     datasets: [{
-                        label: 'Peso (Kg)',
-                        data: [80, 79, 78.5, 78, 77.5], // Mock history
-                        borderColor: '#8b5cf6',
-                        tension: 0.4
+                        label: 'Minuti di allenamento',
+                        data: chartData.data,
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 4
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: true }
                     },
                     scales: {
-                        y: { display: false },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Minuti' }
+                        },
                         x: { display: true }
                     }
                 }
@@ -57,7 +96,7 @@ export default function Progress() {
             </div>
 
             <div class="chart-container card">
-                <h3>Andamento Peso</h3>
+                <h3>Allenamenti - Ultimi 7 Giorni</h3>
                 <canvas id="weightChart"></canvas>
             </div>
             
