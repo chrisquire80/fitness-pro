@@ -75,6 +75,32 @@
       ]
     },
     {
+      "name": "Video Library",
+      "short_name": "Videos",
+      "description": "Guarda video di allenamento",
+      "url": "/#/videos",
+      "icons": [
+        {
+          "src": "icons/shortcut-videos.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Risultati",
+      "short_name": "Achievements",
+      "description": "Visualizza badge e risultati",
+      "url": "/#/gamification",
+      "icons": [
+        {
+          "src": "icons/shortcut-achievements.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "Profilo",
       "short_name": "Profile",
       "description": "Gestisci il tuo profilo",

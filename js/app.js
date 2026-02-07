@@ -1,5 +1,6 @@
 import Navbar from "./components/Navbar.js?v=2";
 import FloatCoach from "./components/FloatCoach.js?v=2";
+import PWAPrompt from "./components/PWAPrompt.js";
 import { modal } from "./components/Modal.js";
 import Home from "./views/Home.js?v=2";
 import Workouts from "./views/Workouts.js?v=2";
@@ -23,6 +24,7 @@ import { syncQueueService } from "./services/SyncQueueService.js";
 import { indexedDBService } from "./services/IndexedDBService.js";
 import { gamificationService } from "./services/GamificationService.js";
 import { videoService } from "./services/VideoService.js";
+import { pwaService } from "./services/PWAService.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
@@ -57,6 +59,9 @@ async function initializeCoreServices() {
 
     // Initialize video service for workout videos
     await videoService.init();
+
+    // Initialize PWA service for offline support and installation
+    await pwaService.init();
 
     // Initialize test runner in debug mode
     if (config.isDebugMode()) {
@@ -186,6 +191,11 @@ function renderLayout() {
       navbarContainer.innerHTML = Navbar();
       const coachContainer = document.getElementById("coach-container");
       if (coachContainer) coachContainer.innerHTML = FloatCoach();
+
+      // Add PWA installation prompt
+      const pwaContainer = document.getElementById("pwa-container");
+      if (pwaContainer) pwaContainer.innerHTML = PWAPrompt();
+
       stateManager.setState("ui.navbar.visible", true);
     }
 
