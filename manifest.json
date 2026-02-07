@@ -88,6 +88,19 @@
       ]
     },
     {
+      "name": "AI Coach",
+      "short_name": "Coach",
+      "description": "Ottieni consigli e feedback dal tuo coach IA",
+      "url": "/#/coach",
+      "icons": [
+        {
+          "src": "icons/shortcut-coach.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "Risultati",
       "short_name": "Achievements",
       "description": "Visualizza badge e risultati",
