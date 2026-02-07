@@ -1,5 +1,6 @@
 import Navbar from "./components/Navbar.js?v=2";
 import FloatCoach from "./components/FloatCoach.js?v=2";
+import { modal } from "./components/Modal.js";
 import Home from "./views/Home.js?v=2";
 import Workouts from "./views/Workouts.js?v=2";
 import Exercises from "./views/Exercises.js?v=2";
@@ -9,6 +10,7 @@ import Progress from "./views/Progress.js?v=2";
 import Nutrition from "./views/Nutrition.js?v=2";
 import Onboarding from "./views/Onboarding.js?v=2";
 import AdminDashboard from "./views/AdminDashboard.js?v=2";
+import RunTracker from "./views/RunTracker.js?v=2";
 import { notificationManager } from "./utils/NotificationManager.js";
 import { stateManager, actions } from "./utils/StateManager.js";
 import { config } from "./utils/Config.js";
@@ -70,6 +72,13 @@ const routes = {
     requiresAuth: false,
     analytics: "page_onboarding",
   },
+  "/run": {
+    component: RunTracker,
+    title: "Corsa",
+    requiresAuth: true,
+    analytics: "page_run_tracker",
+    keepAlive: true,
+  },
   "/admin": {
     component: AdminDashboard, // Use imported component directly
     title: "Admin Dashboard",
@@ -127,6 +136,7 @@ function renderLayout() {
         title: route.title,
         timestamp: Date.now(),
       });
+      analytics.logPageView(route.title);
     }
   } catch (error) {
     console.error("Error rendering layout:", error);
@@ -171,6 +181,9 @@ async function router() {
 
     // Store navigation history
     if (currentPath) {
+      if (config.isFeatureEnabled("analytics")) {
+        analytics.logPageTiming("page_time");
+      }
       navigationHistory.push({
         from: currentPath,
         to: path,
@@ -199,16 +212,16 @@ async function router() {
     }
 
     // Debug route resolution
-    console.log('🔍 Debug Route Resolution:');
-    console.log('Available routes:', Object.keys(routes));
-    console.log('Current path:', JSON.stringify(path));
-    console.log('Route object:', route);
-    console.log('AdminDashboard component:', AdminDashboard);
+    console.log("🔍 Debug Route Resolution:");
+    console.log("Available routes:", Object.keys(routes));
+    console.log("Current path:", JSON.stringify(path));
+    console.log("Route object:", route);
+    console.log("AdminDashboard component:", AdminDashboard);
 
     // Handle route not found
     if (!route) {
       console.error(`❌ Route not found: ${path}`);
-      console.log('Available routes:', Object.keys(routes));
+      console.log("Available routes:", Object.keys(routes));
       notificationManager.warning(
         "Pagina non trovata",
         "La pagina richiesta non esiste. Verrai reindirizzato alla home.",
@@ -233,7 +246,12 @@ async function router() {
 
     // Get view component
     const ViewComponent = route.component;
-    console.log('🎯 ViewComponent for', path, ':', ViewComponent?.name || ViewComponent);
+    console.log(
+      "🎯 ViewComponent for",
+      path,
+      ":",
+      ViewComponent?.name || ViewComponent,
+    );
 
     // Add route transition animation
     if (config.get("userPreferences.animations", true)) {
@@ -242,9 +260,9 @@ async function router() {
 
     // Render view with error boundary
     try {
-      console.log('🎨 Rendering view for:', path);
+      console.log("🎨 Rendering view for:", path);
       const content = await renderViewWithErrorBoundary(ViewComponent, path);
-      console.log('✅ View rendered successfully for:', path);
+      console.log("✅ View rendered successfully for:", path);
       mainContent.innerHTML = content;
 
       renderLayout();
@@ -479,10 +497,10 @@ function initViewCommonFeatures(path, route) {
       }
     } catch (error) {
       errorHandler.handleError({
-        type: 'init',
-        message: 'App initialization failed',
+        type: "init",
+        message: "App initialization failed",
         error: error,
-        fatal: true
+        fatal: true,
       });
     }
   });
@@ -511,11 +529,16 @@ function initViewCommonFeatures(path, route) {
         testRunner.init();
       }
 
+      // Initialize analytics integration (Firebase if available)
+      if (config.isFeatureEnabled("analytics")) {
+        analytics.flushQueue();
+      }
+
       if (config.isDebugMode()) {
-        console.log('🚀 Core services initialized');
+        console.log("🚀 Core services initialized");
       }
     } catch (error) {
-      console.error('Core services initialization failed:', error);
+      console.error("Core services initialization failed:", error);
       throw error;
     }
   }
@@ -545,8 +568,17 @@ window.addEventListener("load", async () => {
     // Initialize core systems
     await initializeCoreServices();
 
+    // Flush analytics queue early (Firebase if available)
+    if (config.isFeatureEnabled("analytics")) {
+      analytics.flushQueue();
+    }
+
     // Initialize state manager
+    // Initialize app state
     await initializeAppState();
+
+    // Apply saved theme preference
+    applySavedTheme();
 
     // Initialize notification system
     notificationManager.init();
@@ -591,9 +623,12 @@ async function initializeAppState() {
     }
 
     // Initialize backup system
-    stateManager.setState('backup.isEnabled', config.isFeatureEnabled('backup'));
-    stateManager.setState('backup.lastBackupTime', 0);
-    stateManager.setState('backup.hasPendingSync', false);
+    stateManager.setState(
+      "backup.isEnabled",
+      config.isFeatureEnabled("backup"),
+    );
+    stateManager.setState("backup.lastBackupTime", 0);
+    stateManager.setState("backup.hasPendingSync", false);
 
     // Subscribe to state changes for debugging
     if (config.isDebugMode()) {
@@ -604,7 +639,7 @@ async function initializeAppState() {
 
     // Subscribe to user profile changes for backup
     stateManager.subscribe("user.profile", (profile) => {
-      if (profile && config.isFeatureEnabled('backup')) {
+      if (profile && config.isFeatureEnabled("backup")) {
         backupService.scheduleBackup();
       }
     });
@@ -614,20 +649,29 @@ async function initializeAppState() {
       if (wasActive && !isActive) {
         // Workout just ended, schedule backup
         setTimeout(() => {
-          if (config.isFeatureEnabled('backup')) {
+          if (config.isFeatureEnabled("backup")) {
             backupService.scheduleBackup();
           }
         }, 5000);
       }
     });
-
   } catch (error) {
     errorHandler.handleError({
-      type: 'state_init',
-      message: 'Failed to initialize app state',
-      error: error
+      type: "state_init",
+      message: "Failed to initialize app state",
+      error: error,
     });
   }
+}
+
+function applySavedTheme() {
+  const theme = config.get("userPreferences.theme", "dark");
+
+  document.documentElement.setAttribute("data-theme", theme);
+  document.body.classList.toggle("theme-light", theme === "light");
+  document.body.classList.toggle("theme-dark", theme !== "light");
+
+  stateManager.setState("ui.theme", theme, { persist: false });
 }
 
 // Initialize router
@@ -641,23 +685,23 @@ function setupGlobalEventListeners() {
   // Global error handler - delegate to ErrorHandler
   window.addEventListener("error", (e) => {
     errorHandler.handleError({
-      type: 'javascript',
+      type: "javascript",
       message: e.message,
       filename: e.filename,
       lineno: e.lineno,
       colno: e.colno,
       error: e.error,
-      stack: e.error?.stack
+      stack: e.error?.stack,
     });
   });
 
   // Unhandled promise rejection handler - delegate to ErrorHandler
   window.addEventListener("unhandledrejection", (e) => {
     errorHandler.handleError({
-      type: 'promise',
-      message: 'Unhandled Promise Rejection',
+      type: "promise",
+      message: "Unhandled Promise Rejection",
       reason: e.reason,
-      stack: e.reason?.stack
+      stack: e.reason?.stack,
     });
   });
 
@@ -791,7 +835,7 @@ window.fitnessApp = {
     deleteAccount: authService.deleteAccount.bind(authService),
     isAuthenticated: authService.isAuthenticated.bind(authService),
     getCurrentUser: authService.getCurrentUser.bind(authService),
-    enableBiometric: authService.enableBiometricAuth.bind(authService)
+    enableBiometric: authService.enableBiometricAuth.bind(authService),
   },
 
   // Backup and sync
@@ -802,7 +846,7 @@ window.fitnessApp = {
     import: backupService.importData.bind(backupService),
     sync: backupService.syncToCloud.bind(backupService),
     getList: backupService.getBackupList.bind(backupService),
-    getStats: backupService.getBackupStats.bind(backupService)
+    getStats: backupService.getBackupStats.bind(backupService),
   },
 
   // Error handling
@@ -811,17 +855,20 @@ window.fitnessApp = {
     logWarning: errorHandler.logWarning.bind(errorHandler),
     logInfo: errorHandler.logInfo.bind(errorHandler),
     getStats: errorHandler.getErrorStats.bind(errorHandler),
-    clear: errorHandler.clearErrors.bind(errorHandler)
+    clear: errorHandler.clearErrors.bind(errorHandler),
   },
 
   // Performance monitoring
   performance: {
     getMetrics: performanceMonitor.getMetrics.bind(performanceMonitor),
-    getSummary: performanceMonitor.getPerformanceSummary.bind(performanceMonitor),
-    getRecommendations: performanceMonitor.getRecommendations.bind(performanceMonitor),
+    getSummary:
+      performanceMonitor.getPerformanceSummary.bind(performanceMonitor),
+    getRecommendations:
+      performanceMonitor.getRecommendations.bind(performanceMonitor),
     mark: performanceMonitor.mark.bind(performanceMonitor),
     measure: performanceMonitor.measure.bind(performanceMonitor),
-    measureFunction: performanceMonitor.measureFunction.bind(performanceMonitor)
+    measureFunction:
+      performanceMonitor.measureFunction.bind(performanceMonitor),
   },
 
   // Utilities
@@ -848,8 +895,8 @@ window.fitnessApp = {
       show: testRunner.showTestUI.bind(testRunner),
       hide: testRunner.hideTestUI.bind(testRunner),
       export: testRunner.exportResults.bind(testRunner),
-      results: testRunner.getResults.bind(testRunner)
-    }
+      results: testRunner.getResults.bind(testRunner),
+    },
   }),
 
   // Debug helpers (only in debug mode)

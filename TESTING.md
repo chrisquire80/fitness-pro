@@ -47,12 +47,14 @@ window.fitnessApp.test.run()
 ```
 Include tutti i test critici più:
 - ⚡ Performance Monitor
-- 💾 Backup Service
+- 💾 Backup Service (con cifratura)
 - 🚨 Error Handler
 - 💬 Notification Manager
 - 🎨 UI Components
 - 📱 PWA Features
 - 🌐 Network Handling
+- 🔐 Modal Component
+- 🏃 Run Tracker GPS
 
 ### Export dei Risultati
 ```javascript
@@ -204,11 +206,108 @@ console.log('Backup disponibili:', backups);
 await window.fitnessApp.backup.export('json');
 ```
 
+### Test Backup Cifrato
+```javascript
+// Imposta passphrase
+window.backupService.setPassphrase('mia-passphrase-sicura');
+
+// Crea backup cifrato
+const encryptedBackup = await window.backupService.createBackup({
+    encrypt: true,
+    compress: true
+});
+
+// Verifica stato passphrase
+console.log(window.backupService.getPassphraseStatus());
+
+// Rimuovi passphrase
+window.backupService.clearPassphrase();
+```
+
 ### Test Import/Export
 - [ ] Export → download file JSON
+- [ ] Export → download file CSV
 - [ ] Cancella dati locali
 - [ ] Import → carica file precedente
 - [ ] Verifica ripristino dati
+- [ ] Test backup cifrato con passphrase corretta
+- [ ] Test backup cifrato con passphrase errata (deve fallire)
+
+### Test UI Backup (Profilo)
+- [ ] Vai su Profilo → sezione Backup
+- [ ] Clicca "Imposta Passphrase" → inserisci passphrase
+- [ ] Verifica stato "Attiva"
+- [ ] Clicca "Crea Backup" → verifica creazione
+- [ ] Clicca "I miei Backup" → verifica lista
+- [ ] Clicca "Esporta" → scegli formato → verifica download
+- [ ] Clicca "Importa" → seleziona file → verifica import
+
+## 🔲 Test Modal Component
+
+### Test Base
+```javascript
+// Alert semplice
+await window.modal.alert('Test', 'Questo è un alert');
+
+// Confirm
+const result = await window.modal.confirm('Conferma', 'Sei sicuro?');
+console.log('Azione:', result.action); // 'confirm' o 'cancel'
+
+// Prompt
+const promptResult = await window.modal.prompt('Nome', 'Inserisci nome');
+console.log('Valore:', promptResult.values.value);
+
+// Passphrase
+const passResult = await window.modal.passphrase('Passphrase');
+console.log('Passphrase:', passResult.values.passphrase);
+
+// Loading (chiudi manualmente)
+const loading = await window.modal.loading('Caricamento...', 'Attendere');
+setTimeout(() => window.modal.close(loading.id), 2000);
+```
+
+### Test Manuali Modal
+- [ ] Premi ESC → modal si chiude (se closeable)
+- [ ] Clicca overlay → modal si chiude
+- [ ] Premi Enter su input → conferma form
+- [ ] Validazione required funziona
+- [ ] Modal multipli si stackano correttamente
+
+## 🏃 Test Run Tracker
+
+### Test GPS Tracking
+- [ ] Vai su `/#/run` 
+- [ ] Verifica UI iniziale (GPS pronto)
+- [ ] Clicca "Inizia Corsa"
+- [ ] Accetta permesso geolocalizzazione
+- [ ] Verifica status "Acquisendo GPS..." → "GPS attivo"
+- [ ] Verifica aggiornamento timer
+- [ ] Cammina/corri → verifica distanza incrementa
+- [ ] Clicca "Pausa" → verifica timer si ferma
+- [ ] Clicca "Riprendi" → verifica timer riprende
+- [ ] Clicca "Termina" → conferma
+- [ ] Verifica modal riepilogo con statistiche
+
+### Test Funzionalità
+```javascript
+// Verifica stato corsa
+console.log('Corsa attiva:', runState.isRunning);
+
+// Accedi alle funzioni
+window.startRun();
+window.togglePauseRun();
+window.stopRun();
+```
+
+### Test Splits
+- [ ] Corri per almeno 1 km
+- [ ] Verifica vibrazione al completamento km
+- [ ] Verifica split appare nella lista
+
+### Test Offline/Edge Cases
+- [ ] Nega permesso GPS → verifica messaggio errore
+- [ ] Disconnetti GPS → verifica comportamento
+- [ ] Chiudi e riapri app durante corsa → verifica persistenza
 
 ## 🔐 Test Autenticazione
 
@@ -354,5 +453,42 @@ L'app è pronta per produzione se:
 
 ---
 
-**Fitness Pro App** - Test Suite v1.0.0
+## 🆕 Test Nuove Funzionalità v1.1.0
+
+### Checklist Modal
+- [ ] `modal.alert()` funziona
+- [ ] `modal.confirm()` ritorna azione corretta
+- [ ] `modal.prompt()` ritorna valore input
+- [ ] `modal.passphrase()` valida lunghezza minima
+- [ ] `modal.loading()` non è chiudibile
+- [ ] `modal.success()` mostra icona verde
+- [ ] `modal.error()` mostra icona rossa
+- [ ] Stacking multiplo funziona
+- [ ] Animazioni fluide
+
+### Checklist BackupService Cifrato
+- [ ] Compressione gzip funziona
+- [ ] Cifratura AES-GCM funziona
+- [ ] Passphrase salvata in sessione
+- [ ] Remember passphrase funziona
+- [ ] Export JSON/CSV/XML funziona
+- [ ] Import con merge funziona
+- [ ] Checksum integrità validato
+- [ ] Lista backup mostra correttamente
+
+### Checklist RunTracker
+- [ ] GPS tracking si attiva
+- [ ] Distanza calcolata correttamente
+- [ ] Passo attuale aggiornato
+- [ ] Passo medio calcolato
+- [ ] Timer funziona con pausa
+- [ ] Splits km registrati
+- [ ] Percorso disegnato su canvas
+- [ ] Wake lock mantiene schermo acceso
+- [ ] Dati salvati al termine
+- [ ] Summary modal mostra statistiche
+
+---
+
+**Fitness Pro App** - Test Suite v1.1.0
 **Ultimo aggiornamento**: 2024

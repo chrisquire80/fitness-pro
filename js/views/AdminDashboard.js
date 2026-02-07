@@ -28,6 +28,7 @@ export default function AdminDashboard() {
     loadPerformanceMetrics();
     loadBackupStats();
     loadUserStats();
+    loadAnalyticsStats();
     setupRealTimeUpdates();
   };
 
@@ -233,6 +234,114 @@ export default function AdminDashboard() {
         `;
   };
 
+  window.loadAnalyticsStats = () => {
+    const prefix = window.fitnessApp?.config?.storage?.prefix || "fitness_";
+    const historyKey = `${prefix}analytics_history`;
+    const queueKey = `${prefix}analytics_queue`;
+    let events = [];
+
+    try {
+      events = JSON.parse(localStorage.getItem(historyKey)) || [];
+    } catch {
+      events = [];
+    }
+
+    let queueSize = 0;
+    try {
+      queueSize = (JSON.parse(localStorage.getItem(queueKey)) || []).length;
+    } catch {
+      queueSize = 0;
+    }
+
+    const byName = {};
+    const byPath = {};
+    const bySession = {};
+    let totalDuration = 0;
+    let timingCount = 0;
+
+    events.forEach((evt) => {
+      byName[evt.name] = (byName[evt.name] || 0) + 1;
+      const path = evt.params?.path || "/";
+      byPath[path] = (byPath[path] || 0) + 1;
+      const sessionId = evt.params?.session_id || "unknown";
+      bySession[sessionId] = (bySession[sessionId] || 0) + 1;
+
+      if (
+        evt.name === "timing" &&
+        typeof evt.params?.duration_ms === "number"
+      ) {
+        totalDuration += evt.params.duration_ms;
+        timingCount += 1;
+      }
+    });
+
+    const avgPageTimeMs =
+      timingCount > 0 ? Math.round(totalDuration / timingCount) : 0;
+
+    const funnel = {
+      onboarding: byName.page_onboarding || 0,
+      workouts: byName.page_workouts || 0,
+      active: byName.page_active_workout || 0,
+      complete: byName.workout_complete || 0,
+    };
+
+    const topEvents = Object.entries(byName)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(
+        ([name, count]) =>
+          `<div class="metric-line"><span>${name}</span><strong>${count}</strong></div>`,
+      )
+      .join("");
+
+    const topPaths = Object.entries(byPath)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(
+        ([path, count]) =>
+          `<div class="metric-line"><span>${path}</span><strong>${count}</strong></div>`,
+      )
+      .join("");
+
+    document.getElementById("analytics-stats").innerHTML = `
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <h4>Events</h4>
+                    <div class="stat-value">${events.length}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Sessions</h4>
+                    <div class="stat-value">${Object.keys(bySession).length}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Avg Page Time</h4>
+                    <div class="stat-value">${avgPageTimeMs}ms</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Queue Size</h4>
+                    <div class="stat-value">${queueSize}</div>
+                </div>
+            </div>
+            <div class="analytics-lists">
+                <div>
+                    <h4>Top Events</h4>
+                    ${topEvents || '<p class="no-data">No events</p>'}
+                </div>
+                <div>
+                    <h4>Top Paths</h4>
+                    ${topPaths || '<p class="no-data">No paths</p>'}
+                </div>
+                <div>
+                    <h4>Funnel</h4>
+                    <div class="metric-line"><span>Onboarding</span><strong>${funnel.onboarding}</strong></div>
+                    <div class="metric-line"><span>Workouts</span><strong>${funnel.workouts}</strong></div>
+                    <div class="metric-line"><span>Active Workout</span><strong>${funnel.active}</strong></div>
+                    <div class="metric-line"><span>Complete</span><strong>${funnel.complete}</strong></div>
+                </div>
+            </div>
+        `;
+  };
+
   window.getStorageUsage = () => {
     let totalSize = 0;
     const details = {};
@@ -260,6 +369,7 @@ export default function AdminDashboard() {
         loadSystemStats();
         loadErrorStats();
         loadPerformanceMetrics();
+        loadAnalyticsStats();
       }
     }, 5000);
   };
@@ -389,6 +499,12 @@ export default function AdminDashboard() {
                 <div class="admin-section">
                     <h3>Performance Metrics</h3>
                     <div id="performance-metrics"></div>
+                </div>
+
+                <!-- Analytics -->
+                <div class="admin-section">
+                    <h3>Analytics</h3>
+                    <div id="analytics-stats"></div>
                 </div>
 
                 <!-- Backup Stats -->
@@ -641,6 +757,22 @@ export default function AdminDashboard() {
                 font-size: 0.7rem;
                 color: var(--text-secondary);
                 margin-top: 0.25rem;
+            }
+
+            .analytics-lists {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .metric-line {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.4rem 0;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                font-size: 0.85rem;
             }
 
             .recommendation {
