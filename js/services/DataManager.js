@@ -16,6 +16,7 @@ class DataManager {
       WORKOUTS: `${config.get("storage.prefix")}workouts`,
       WORKOUT_LOGS: `${config.get("storage.prefix")}logs`,
       PROGRESS: `${config.get("storage.prefix")}progress`,
+      TEMPLATES: `${config.get("storage.prefix")}templates`,
     };
     this.isInitialized = false;
     this.init();
@@ -382,6 +383,120 @@ class DataManager {
     } catch (error) {
       this._handleError("addWorkout", error);
       return false;
+    }
+  }
+
+  // ── Workout Templates ────────────────────────────────────────
+
+  getTemplates() {
+    try {
+      return this._get(this.STORAGE_KEYS.TEMPLATES);
+    } catch (error) {
+      this._handleError("getTemplates", error);
+      return [];
+    }
+  }
+
+  getTemplateById(id) {
+    try {
+      if (!id) return null;
+      return this.getTemplates().find((t) => t.id === id) || null;
+    } catch (error) {
+      this._handleError("getTemplateById", error);
+      return null;
+    }
+  }
+
+  saveTemplate(template) {
+    try {
+      if (!template.name || !Array.isArray(template.exercises)) {
+        console.warn("Invalid template data:", template);
+        return false;
+      }
+      const templates = this.getTemplates();
+      const existing = templates.findIndex((t) => t.id === template.id);
+
+      if (!template.id) {
+        template.id = "tmpl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      }
+      template.created_at = template.created_at || new Date().toISOString();
+      template.updated_at = new Date().toISOString();
+
+      if (existing >= 0) {
+        templates[existing] = template;
+      } else {
+        templates.push(template);
+      }
+
+      analytics.logEvent("template_saved", { template_name: template.name });
+      return this._save(this.STORAGE_KEYS.TEMPLATES, templates);
+    } catch (error) {
+      this._handleError("saveTemplate", error);
+      return false;
+    }
+  }
+
+  deleteTemplate(id) {
+    try {
+      const templates = this.getTemplates().filter((t) => t.id !== id);
+      return this._save(this.STORAGE_KEYS.TEMPLATES, templates);
+    } catch (error) {
+      this._handleError("deleteTemplate", error);
+      return false;
+    }
+  }
+
+  createWorkoutFromTemplate(templateId) {
+    try {
+      const template = this.getTemplateById(templateId);
+      if (!template) return null;
+      const workoutId = "wk_tmpl_" + Date.now();
+      const workout = {
+        id: workoutId,
+        name: template.name,
+        type: template.type || "Custom",
+        estimated_duration: template.estimated_duration || 30,
+        difficulty_label: template.difficulty_label || "Media",
+        equipment_label: template.equipment_label || "Nessun attrezzo",
+        exercises: template.exercises.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          sets: ex.sets || 3,
+          reps: ex.reps || 12,
+          rest_seconds: ex.rest_seconds || 60,
+        })),
+        from_template: templateId,
+      };
+      this.addWorkout(workout);
+      return workout;
+    } catch (error) {
+      this._handleError("createWorkoutFromTemplate", error);
+      return null;
+    }
+  }
+
+  saveWorkoutAsTemplate(workoutId, templateName) {
+    try {
+      const workout = this.getWorkoutById(workoutId);
+      if (!workout) return null;
+      const template = {
+        name: templateName || workout.name + " (Template)",
+        type: workout.type,
+        estimated_duration: workout.estimated_duration,
+        difficulty_label: workout.difficulty_label,
+        equipment_label: workout.equipment_label,
+        exercises: workout.exercises.map((ex) => ({
+          exercise_id: ex.exercise_id || ex.details?.id,
+          sets: ex.sets || 3,
+          reps: ex.reps || 12,
+          rest_seconds: ex.rest_seconds || 60,
+        })),
+        source_workout_id: workoutId,
+      };
+      this.saveTemplate(template);
+      return template;
+    } catch (error) {
+      this._handleError("saveWorkoutAsTemplate", error);
+      return null;
     }
   }
 

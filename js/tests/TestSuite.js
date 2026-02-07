@@ -1806,6 +1806,158 @@ async function testDataFlowIntegration() {
 }
 
 // ============================================================
+// FEATURE TESTS: Templates, Rest Timer data
+// ============================================================
+
+/**
+ * Workout Templates CRUD tests
+ */
+async function testWorkoutTemplates() {
+  const { dataManager } = await import("../services/DataManager.js");
+
+  // Clean slate
+  const initialTemplates = dataManager.getTemplates();
+
+  // --- saveTemplate ---
+  const template = {
+    name: "Push Day",
+    type: "Custom",
+    estimated_duration: 45,
+    exercises: [
+      { exercise_id: "ex_001", sets: 4, reps: 10, rest_seconds: 90 },
+      { exercise_id: "ex_002", sets: 3, reps: 12, rest_seconds: 60 },
+    ],
+  };
+
+  assertTrue(dataManager.saveTemplate(template), "saveTemplate succeeds");
+
+  const templates = dataManager.getTemplates();
+  assertTrue(
+    templates.length > initialTemplates.length,
+    "Template count increased"
+  );
+
+  const saved = templates.find((t) => t.name === "Push Day");
+  assertNotNull(saved, "Saved template found by name");
+  assertNotNull(saved.id, "Template has auto-generated id");
+  assertNotNull(saved.created_at, "Template has created_at");
+  assertEqual(saved.exercises.length, 2, "Template has 2 exercises");
+
+  // --- getTemplateById ---
+  const found = dataManager.getTemplateById(saved.id);
+  assertNotNull(found, "getTemplateById returns template");
+  assertEqual(found.name, "Push Day", "getTemplateById returns correct template");
+  assertNull(
+    dataManager.getTemplateById("nonexistent"),
+    "getTemplateById returns null for unknown id"
+  );
+
+  // --- saveTemplate (update existing) ---
+  saved.name = "Push Day v2";
+  assertTrue(dataManager.saveTemplate(saved), "Update template succeeds");
+  const updated = dataManager.getTemplateById(saved.id);
+  assertEqual(updated.name, "Push Day v2", "Template name updated");
+  assertNotNull(updated.updated_at, "Template has updated_at");
+
+  // --- Invalid template ---
+  assertFalse(
+    dataManager.saveTemplate({ name: "No exercises" }),
+    "Template without exercises array fails"
+  );
+  assertFalse(
+    dataManager.saveTemplate({ exercises: [] }),
+    "Template without name fails"
+  );
+
+  // --- saveWorkoutAsTemplate ---
+  const workouts = dataManager.getWorkouts();
+  if (workouts.length > 0) {
+    const tmpl = dataManager.saveWorkoutAsTemplate(
+      workouts[0].id,
+      "From Workout"
+    );
+    assertNotNull(tmpl, "saveWorkoutAsTemplate returns template");
+    assertEqual(tmpl.name, "From Workout", "Template has specified name");
+    assertTrue(
+      Array.isArray(tmpl.exercises),
+      "Template has exercises array"
+    );
+  }
+
+  // --- createWorkoutFromTemplate ---
+  const workout = dataManager.createWorkoutFromTemplate(saved.id);
+  assertNotNull(workout, "createWorkoutFromTemplate returns workout");
+  assertTrue(workout.id.startsWith("wk_tmpl_"), "Created workout has template prefix");
+  assertEqual(workout.name, "Push Day v2", "Created workout has template name");
+  assertEqual(
+    workout.exercises.length,
+    2,
+    "Created workout has template exercises"
+  );
+  assertEqual(
+    workout.from_template,
+    saved.id,
+    "Created workout references template"
+  );
+
+  // --- deleteTemplate ---
+  assertTrue(
+    dataManager.deleteTemplate(saved.id),
+    "deleteTemplate succeeds"
+  );
+  assertNull(
+    dataManager.getTemplateById(saved.id),
+    "Deleted template not found"
+  );
+
+  // Clean up any "From Workout" templates
+  dataManager.getTemplates()
+    .filter((t) => t.name === "From Workout")
+    .forEach((t) => dataManager.deleteTemplate(t.id));
+}
+
+/**
+ * Set logging (for strength progression) tests
+ */
+async function testSetLogging() {
+  const { dataManager } = await import("../services/DataManager.js");
+
+  // Save a log with set_logs (as ActiveWorkout now does)
+  const log = {
+    workout_id: "wk_001",
+    date: new Date().toISOString().split("T")[0],
+    sets: 3,
+    reps: 36,
+    type: "Strength",
+    duration_real: 1800,
+    set_logs: [
+      { exercise_name: "Squat", set_number: 1, reps: 12, timestamp: Date.now() },
+      { exercise_name: "Squat", set_number: 2, reps: 12, timestamp: Date.now() },
+      { exercise_name: "Squat", set_number: 3, reps: 12, timestamp: Date.now() },
+    ],
+  };
+
+  assertTrue(dataManager.saveLog(log), "Log with set_logs saves");
+
+  const logs = dataManager.getLogs();
+  const savedLog = logs[logs.length - 1];
+  assertTrue(
+    Array.isArray(savedLog.set_logs),
+    "Saved log preserves set_logs array"
+  );
+  assertEqual(savedLog.set_logs.length, 3, "set_logs has 3 entries");
+  assertEqual(
+    savedLog.set_logs[0].exercise_name,
+    "Squat",
+    "set_logs entry has exercise_name"
+  );
+
+  // Volume calculation test
+  const volume = savedLog.sets * savedLog.reps;
+  assertTrue(volume > 0, "Volume is positive");
+}
+
+// ============================================================
 // EXPORT TEST REGISTRY
 // ============================================================
 
@@ -1902,6 +2054,18 @@ export const testRegistry = [
   {
     name: "Data Flow Integration (save log -> stats update)",
     testFunction: testDataFlowIntegration,
+    priority: "normal",
+  },
+
+  // Feature Tests
+  {
+    name: "Workout Templates CRUD",
+    testFunction: testWorkoutTemplates,
+    priority: "critical",
+  },
+  {
+    name: "Set Logging for Strength Progression",
+    testFunction: testSetLogging,
     priority: "normal",
   },
 ];
