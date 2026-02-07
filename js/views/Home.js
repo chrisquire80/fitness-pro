@@ -6,9 +6,20 @@ export default function Home() {
 
     // Simulate Weekly Recap trigger on Home load
     setTimeout(() => emailService.sendWeeklyRecap(), 2000);
-    // Get a recommendation (taking the first one for now)
+
+    // Get a smart recommendation
     const workouts = dataManager.getWorkouts();
-    const recommended = workouts[0] || {};
+    let recommended = {};
+
+    if (workouts.length > 0) {
+        // Prefer non-premium workouts
+        const availableWorkouts = workouts.filter(w => !w.is_premium);
+        const selectableWorkouts = availableWorkouts.length > 0 ? availableWorkouts : workouts;
+
+        // Select a random workout for variety
+        const randomIndex = Math.floor(Math.random() * selectableWorkouts.length);
+        recommended = selectableWorkouts[randomIndex];
+    }
 
     // Determine greeting based on time
     const hour = new Date().getHours();
