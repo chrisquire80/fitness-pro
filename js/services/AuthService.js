@@ -47,16 +47,21 @@ class AuthService {
 
     /**
      * Initialize cryptographic functions
+     * Security Note: Encryption keys are stored in sessionStorage (cleared on tab close)
+     * and regenerated per session. This is a security compromise between:
+     * - Pure security: Generate new key each time (slow, can't decrypt previous data)
+     * - Convenience: Store persistently in localStorage (vulnerable to XSS)
+     * For sensitive production data requiring persistence, use server-side encryption instead.
      */
     async initializeCrypto() {
         if (window.crypto && window.crypto.subtle) {
             try {
-                // Generate or retrieve encryption key
-                const storedKey = localStorage.getItem(`${config.get('storage.prefix')}enc_key`);
+                // Try to retrieve key from sessionStorage first (active session only)
+                const sessionKey = sessionStorage.getItem(`${config.get('storage.prefix')}enc_key`);
 
-                if (storedKey) {
-                    // Import existing key
-                    const keyData = JSON.parse(storedKey);
+                if (sessionKey) {
+                    // Import key from current session
+                    const keyData = JSON.parse(sessionKey);
                     this.encryptionKey = await window.crypto.subtle.importKey(
                         'raw',
                         new Uint8Array(keyData),
@@ -65,16 +70,18 @@ class AuthService {
                         ['encrypt', 'decrypt']
                     );
                 } else {
-                    // Generate new key
+                    // Always generate a fresh key for this session
+                    // This ensures compromised old keys can't decrypt current session data
                     this.encryptionKey = await window.crypto.subtle.generateKey(
                         { name: 'AES-GCM', length: 256 },
                         true,
                         ['encrypt', 'decrypt']
                     );
 
-                    // Store key (in production, this should be more secure)
+                    // Store key in sessionStorage only (cleared when tab is closed)
+                    // More secure than localStorage, but not available across browser tabs/windows
                     const keyData = await window.crypto.subtle.exportKey('raw', this.encryptionKey);
-                    localStorage.setItem(
+                    sessionStorage.setItem(
                         `${config.get('storage.prefix')}enc_key`,
                         JSON.stringify(Array.from(new Uint8Array(keyData)))
                     );
