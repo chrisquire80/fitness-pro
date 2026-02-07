@@ -115,6 +115,11 @@ class Config {
           first_workout: 500,
         },
       },
+
+      routing: {
+        useHistoryApi: false, // Default to hash routing for better compatibility with static servers
+        basePath: "",
+      },
     };
 
     // Environment-specific overrides
