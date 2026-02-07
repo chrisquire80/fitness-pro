@@ -42,7 +42,7 @@ export default function Home() {
 
         <!-- Zone 2: Hero Card -->
         <div class="hero-section">
-            <div class="card hero-card" onclick="window.location.hash='#/active'">
+            <div class="card hero-card" onclick="window.location.hash='#/active?id=${recommended.id}'">
                 <div class="hero-bg" style="background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.8)), url('${recommended.thumbnail_url || ''}');"></div>
                 
                 <div class="hero-content">

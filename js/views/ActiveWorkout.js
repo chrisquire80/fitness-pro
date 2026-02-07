@@ -4,9 +4,15 @@ import { analytics } from '../services/Analytics.js';
 
 export default function ActiveWorkout() {
 
-    // Mocking Route Params: Always load 'wk_001' for now
-    // In a real router we would get ID from URL
-    const workoutId = 'wk_001';
+    // Get workoutId from URL parameters or default to first available
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const urlWorkoutId = hashParams.get('id');
+
+    // Get all available workouts to determine default
+    const allWorkouts = dataManager.getWorkouts();
+    const defaultWorkoutId = allWorkouts.length > 0 ? allWorkouts[0].id : 'wk_001';
+
+    const workoutId = urlWorkoutId || defaultWorkoutId;
     const workout = dataManager.getWorkoutById(workoutId);
 
     // Initialize session stats if starting fresh

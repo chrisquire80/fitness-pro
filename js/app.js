@@ -186,23 +186,41 @@ function renderLayout() {
   }
 }
 
-// Get current path (supporting both hash and history API)
+// Get current path (supporting both hash and History API)
 function getCurrentPath() {
-  // Check if using hash routing
+  // Prefer History API if available and not using hash routing
+  if (window.history && config.get("routing.useHistoryApi", true)) {
+    const pathname = window.location.pathname;
+    // Remove base path if configured
+    const basePath = config.get("routing.basePath", "");
+    if (basePath && pathname.startsWith(basePath)) {
+      return pathname.slice(basePath.length) || "/";
+    }
+    return pathname || "/";
+  }
+
+  // Fallback to hash routing for backward compatibility
   if (window.location.hash) {
     return window.location.hash.slice(1) || "/";
   }
-  // Fallback to pathname for future History API support
-  return window.location.pathname || "/";
+
+  return "/";
 }
 
-// Update active navigation link
+// Update active navigation link (supports both hash and History API)
 function updateActiveNavLink(path) {
   const navLinks = document.querySelectorAll(".nav-link");
+  const useHistoryApi = config.get("routing.useHistoryApi", true);
+
   navLinks.forEach((link) => {
     link.classList.remove("active-nav");
     const href = link.getAttribute("href");
-    if (href === `#${path}`) {
+
+    // Check both hash (#path) and History API (pathname) formats
+    const hashMatch = href === `#${path}`;
+    const pathnameMatch = useHistoryApi && href === path;
+
+    if (hashMatch || pathnameMatch) {
       link.classList.add("active-nav");
     }
   });
@@ -337,9 +355,19 @@ async function router() {
   }
 }
 
-// Navigate to a path programmatically
+// Navigate to a path programmatically (with History API support)
 function navigateTo(path) {
-  window.location.hash = `#${path}`;
+  // Use History API if available and configured
+  if (window.history?.pushState && config.get("routing.useHistoryApi", true)) {
+    const basePath = config.get("routing.basePath", "");
+    const fullPath = basePath + path;
+    window.history.pushState({ path }, "", fullPath);
+    // Trigger router after state is pushed
+    router();
+  } else {
+    // Fallback to hash routing
+    window.location.hash = `#${path}`;
+  }
 }
 
 // Show loading state
@@ -561,6 +589,14 @@ function initViewCommonFeatures(path, route) {
 
 // Enhanced Navigation and App Initialization
 window.addEventListener("hashchange", router);
+
+// Support popstate for History API (back/forward buttons)
+window.addEventListener("popstate", (event) => {
+  if (config.get("routing.useHistoryApi", true)) {
+    router();
+  }
+});
+
 window.addEventListener("load", async () => {
   // Initialize app with enhanced error handling
   try {

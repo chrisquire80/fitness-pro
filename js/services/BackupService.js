@@ -74,21 +74,70 @@ class BackupService {
 
   /**
    * Initialize Firebase (if API keys are configured)
+   * Loads Firebase SDK from CDN and initializes Firestore for cloud backup
    */
   async initializeFirebase() {
     const firebaseConfig = config.get("apiKeys.firebase");
 
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
       console.warn("Firebase not configured for backup");
+      this.firebaseInitialized = false;
       return;
     }
 
     try {
-      // In a real implementation, you would initialize Firebase SDK here
-      console.log("Firebase backup ready (mock implementation)");
+      // Load Firebase SDK from CDN if not already loaded
+      if (!window.firebase) {
+        await this._loadFirebaseSDK();
+      }
+
+      // Initialize Firebase with provided config
+      if (window.firebase && !window.firebase.apps.length) {
+        window.firebase.initializeApp(firebaseConfig);
+        this.firebaseDb = window.firebase.firestore();
+        this.firebaseInitialized = true;
+
+        if (config.isDebugMode()) {
+          console.log("✅ Firebase initialized for cloud backup");
+        }
+      } else if (window.firebase?.apps.length > 0) {
+        // Firebase already initialized
+        this.firebaseDb = window.firebase.firestore();
+        this.firebaseInitialized = true;
+
+        if (config.isDebugMode()) {
+          console.log("✅ Firebase already initialized, using existing instance");
+        }
+      }
     } catch (error) {
       console.error("Firebase initialization failed:", error);
+      this.firebaseInitialized = false;
     }
+  }
+
+  /**
+   * Load Firebase SDK from CDN
+   */
+  async _loadFirebaseSDK() {
+    return new Promise((resolve, reject) => {
+      // Load main Firebase script
+      const scriptMain = document.createElement("script");
+      scriptMain.src = "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+      scriptMain.onload = () => {
+        // Load Firestore module
+        const scriptFirestore = document.createElement("script");
+        scriptFirestore.src = "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        scriptFirestore.onload = () => resolve();
+        scriptFirestore.onerror = () => {
+          reject(new Error("Failed to load Firebase Firestore SDK"));
+        };
+        document.head.appendChild(scriptFirestore);
+      };
+      scriptMain.onerror = () => {
+        reject(new Error("Failed to load Firebase SDK"));
+      };
+      document.head.appendChild(scriptMain);
+    });
   }
 
   /**
@@ -1285,20 +1334,74 @@ class BackupService {
   }
 
   /**
-   * Cloud operations (mock implementations)
+   * Cloud operations with Firebase support
    */
   async uploadToCloud(backupId) {
-    // Mock cloud upload
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true, cloudId: backupId + "_cloud" });
-      }, 1000);
-    });
+    try {
+      // If Firebase is initialized, upload to Firestore
+      if (this.firebaseInitialized && this.firebaseDb) {
+        const backup = await this.getBackupById(backupId);
+        if (!backup) {
+          throw new Error(`Backup non trovato: ${backupId}`);
+        }
+
+        const userId = dataManager.getCurrentUser()?.id || "anonymous";
+        const cloudRef = this.firebaseDb.collection("users").doc(userId).collection("backups").doc(backupId);
+
+        await cloudRef.set({
+          ...backup,
+          uploadedAt: new Date().toISOString(),
+          syncedAt: new Date().getTime(),
+        });
+
+        if (config.isDebugMode()) {
+          console.log("✅ Backup uploaded to Firebase:", backupId);
+        }
+
+        return { success: true, cloudId: backupId, provider: "firebase" };
+      } else {
+        // Fallback: no real cloud provider available
+        console.warn("Cloud provider non disponibile, backup non sincronizzato");
+        return { success: false, reason: "cloud_provider_unavailable" };
+      }
+    } catch (error) {
+      console.error("Errore durante upload cloud:", error);
+      return { success: false, error: error.message };
+    }
   }
 
   async getLatestCloudBackup() {
-    // Mock cloud retrieval
-    return null;
+    try {
+      // If Firebase is initialized, retrieve from Firestore
+      if (this.firebaseInitialized && this.firebaseDb) {
+        const userId = dataManager.getCurrentUser()?.id || "anonymous";
+        const backupsRef = this.firebaseDb.collection("users").doc(userId).collection("backups");
+
+        const querySnapshot = await backupsRef
+          .orderBy("uploadedAt", "desc")
+          .limit(1)
+          .get();
+
+        if (querySnapshot.empty) {
+          return null;
+        }
+
+        const backupDoc = querySnapshot.docs[0];
+        const backupData = backupDoc.data();
+
+        if (config.isDebugMode()) {
+          console.log("✅ Retrieved latest backup from Firebase:", backupDoc.id);
+        }
+
+        return backupData;
+      } else {
+        // No cloud provider, return null
+        return null;
+      }
+    } catch (error) {
+      console.error("Errore durante recupero backup cloud:", error);
+      return null;
+    }
   }
 
   async getLocalBackups() {
@@ -1313,8 +1416,38 @@ class BackupService {
   }
 
   async getCloudBackups() {
-    // Mock cloud backup list
-    return [];
+    try {
+      // If Firebase is initialized, retrieve backup list from Firestore
+      if (this.firebaseInitialized && this.firebaseDb) {
+        const userId = dataManager.getCurrentUser()?.id || "anonymous";
+        const backupsRef = this.firebaseDb.collection("users").doc(userId).collection("backups");
+
+        const querySnapshot = await backupsRef
+          .orderBy("uploadedAt", "desc")
+          .get();
+
+        const cloudBackups = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          timestamp: doc.data().metadata?.timestamp || doc.data().uploadedAt,
+          size: JSON.stringify(doc.data()).length,
+          dataTypes: doc.data().metadata?.dataTypes || [],
+          location: "cloud",
+          provider: "firebase",
+        }));
+
+        if (config.isDebugMode()) {
+          console.log(`✅ Retrieved ${cloudBackups.length} cloud backups from Firebase`);
+        }
+
+        return cloudBackups;
+      } else {
+        // No cloud provider available
+        return [];
+      }
+    } catch (error) {
+      console.error("Errore durante recupero lista backup cloud:", error);
+      return [];
+    }
   }
 
   async restorePendingSyncs() {
