@@ -22,74 +22,171 @@ export default function ActiveWorkout() {
             sets: 0,
             reps: 0,
             duration: 0,
-            currentExIndex: 0
+            currentExIndex: 0,
+            startedAt: Date.now(),
+            setLogs: [] // Track individual set data for strength curves
         };
     }
 
     const currentExIndex = window.sessionStats.currentExIndex;
-    // Safety check if workout exists
     const currentEx = workout ? workout.exercises[currentExIndex] : null;
     const exDetails = currentEx ? currentEx.details : {};
+    const restSeconds = currentEx ? (currentEx.rest_seconds || 60) : 60;
+    const totalSets = currentEx ? (currentEx.sets || 3) : 3;
 
-    // Attach helper functions to window for inline onclicks
+    // ── Rest Timer Logic ──────────────────────────────────────
+    window._restTimerInterval = window._restTimerInterval || null;
+    window._restTimeLeft = window._restTimeLeft ?? 0;
+
+    window.startRestTimer = (seconds) => {
+        window._restTimeLeft = seconds;
+        const overlay = document.getElementById('rest-timer-overlay');
+        const circle = document.getElementById('rest-timer-circle');
+        const display = document.getElementById('rest-timer-display');
+        const totalTime = seconds;
+
+        if (overlay) overlay.classList.add('active');
+
+        if (window._restTimerInterval) clearInterval(window._restTimerInterval);
+
+        window._restTimerInterval = setInterval(() => {
+            window._restTimeLeft--;
+            if (display) display.textContent = window._restTimeLeft;
+
+            // Update circular progress
+            if (circle) {
+                const progress = window._restTimeLeft / totalTime;
+                const circumference = 2 * Math.PI * 54;
+                circle.style.strokeDashoffset = circumference * (1 - progress);
+            }
+
+            if (window._restTimeLeft <= 3 && window._restTimeLeft > 0) {
+                // Vibrate on last 3 seconds
+                if (navigator.vibrate) navigator.vibrate(100);
+            }
+
+            if (window._restTimeLeft <= 0) {
+                window.stopRestTimer();
+                audioGuide.speak("Recupero terminato. Prossimo set!");
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            }
+        }, 1000);
+    };
+
+    window.stopRestTimer = () => {
+        if (window._restTimerInterval) {
+            clearInterval(window._restTimerInterval);
+            window._restTimerInterval = null;
+        }
+        window._restTimeLeft = 0;
+        const overlay = document.getElementById('rest-timer-overlay');
+        if (overlay) overlay.classList.remove('active');
+    };
+
+    window.skipRestTimer = () => {
+        window.stopRestTimer();
+    };
+
+    window.addRestTime = (extraSeconds) => {
+        window._restTimeLeft += extraSeconds;
+        const display = document.getElementById('rest-timer-display');
+        if (display) display.textContent = window._restTimeLeft;
+    };
+
+    // ── Set completion + auto rest timer ──────────────────────
     window.handleNextSet = () => {
         window.sessionStats.sets++;
-        // Use scheduled reps
         const plannedReps = currentEx ? currentEx.reps : 12;
-        window.sessionStats.reps += parseInt(plannedReps) || 0;
+        const reps = parseInt(plannedReps) || 0;
+        window.sessionStats.reps += reps;
 
-        audioGuide.speak("Set completato. Recupera 30 secondi.");
+        // Log set data for strength progression
+        window.sessionStats.setLogs.push({
+            exercise_id: currentEx?.details?.id || 'unknown',
+            exercise_name: exDetails.name || 'Unknown',
+            set_number: window.sessionStats.sets,
+            reps: reps,
+            timestamp: Date.now()
+        });
 
-        // Simple logic to advance exercise if sets are done (Mock logic)
-        // In real app we track sets per exercise
-        // For prototype, let's just stay on same exercise or loop
-
-        // Update UI
+        // Update set display
         const setDisplay = document.getElementById('set-display');
-        if (setDisplay) setDisplay.innerText = `${window.sessionStats.sets} / ${currentEx ? currentEx.sets : 3}`;
+        const currentSetNum = Math.min(window.sessionStats.sets + 1, totalSets);
+        if (setDisplay) setDisplay.innerText = `${currentSetNum} / ${totalSets}`;
+
+        // Check if all sets for this exercise are done
+        if (window.sessionStats.sets >= totalSets * (currentExIndex + 1)) {
+            // Move to next exercise
+            if (currentExIndex + 1 < (workout ? workout.exercises.length : 1)) {
+                window.sessionStats.currentExIndex++;
+                audioGuide.speak("Esercizio completato! Recupera e preparati per il prossimo.");
+                window.startRestTimer(restSeconds);
+                // Re-render after rest
+                setTimeout(() => { window.location.hash = `#/active?id=${workoutId}`; }, (restSeconds + 1) * 1000);
+                return;
+            } else {
+                // All exercises done
+                audioGuide.speak("Tutti gli esercizi completati! Ottimo lavoro!");
+                window.finishWorkout();
+                return;
+            }
+        }
+
+        audioGuide.speak(`Set ${window.sessionStats.sets} completato.`);
+        // Start rest timer automatically
+        window.startRestTimer(restSeconds);
     };
 
     window.finishWorkout = () => {
-        const today = new Date().toISOString().split('T')[0];
+        // Clean up timers
+        window.stopRestTimer();
+        if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
+
+        const elapsed = Math.round((Date.now() - window.sessionStats.startedAt) / 1000);
 
         const workoutLog = {
-            date: today,
+            date: new Date().toISOString().split('T')[0],
             sets: window.sessionStats.sets,
             reps: window.sessionStats.reps,
-            calories: window.sessionStats.sets * 50, // Mock cal calc
+            calories: window.sessionStats.sets * 50,
             type: workout ? workout.type : "Generic",
             workout_id: workoutId,
-            duration_real: 1200 // Mock duration
+            duration_real: elapsed,
+            set_logs: window.sessionStats.setLogs
         };
 
         dataManager.saveLog(workoutLog);
         analytics.logWorkoutComplete(workoutLog.workout_id, workoutLog.duration_real, window.sessionStats.sets);
 
         audioGuide.speak("Allenamento terminato. Ottimo lavoro!");
+        window.sessionStats = null;
         window.location.hash = '#/';
     };
 
-    // Initialize logic after partial render (hack for vanilla JS component-less structure)
+    // Initialize timer after render
     setTimeout(() => {
         analytics.logWorkoutStart(workoutId, workout ? workout.name : 'Unknown');
         const timerEl = document.getElementById('workout-timer');
 
-        // Announce start only if just mounted
-        // audioGuide.speak(`Inizia l'allenamento ${workout ? workout.name : ''}.`);
-
         if (timerEl) {
-            let seconds = 0;
-            // Clear any existing interval to prevent duplicates
+            let seconds = Math.round((Date.now() - window.sessionStats.startedAt) / 1000);
             if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
 
             window.activeTimerInterval = setInterval(() => {
                 seconds++;
-                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const hrs = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
                 const secs = (seconds % 60).toString().padStart(2, '0');
-                if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+                timerEl.textContent = hrs > 0 ? `${hrs}:${mins}:${secs}` : `${mins}:${secs}`;
             }, 1000);
         }
     }, 100);
+
+    const exerciseProgress = workout ? workout.exercises.map((ex, idx) => {
+        const done = idx < currentExIndex;
+        const active = idx === currentExIndex;
+        return `<div class="ex-pip ${done ? 'done' : ''} ${active ? 'active' : ''}" title="${ex.details?.name || ''}"></div>`;
+    }).join('') : '';
 
     return `
         <div class="active-workout-container">
@@ -97,6 +194,9 @@ export default function ActiveWorkout() {
                 <h2>${workout ? workout.name : 'Allenamento'}</h2>
                 <div id="workout-timer" class="timer-display">00:00</div>
             </div>
+
+            <!-- Exercise progress pips -->
+            <div class="exercise-progress-bar">${exerciseProgress}</div>
 
             <div class="card current-exercise-card">
                 <div class="exercise-header">
@@ -106,13 +206,13 @@ export default function ActiveWorkout() {
 
                 <!-- YouTube Video Embed -->
                 <div class="video-container">
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        src="https://www.youtube-nocookie.com/embed/${exDetails.video_id || ''}?controls=0&modestbranding=1&rel=0" 
-                        title="Exercise Video" 
-                        frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src="https://www.youtube-nocookie.com/embed/${exDetails.video_id || ''}?controls=0&modestbranding=1&rel=0"
+                        title="Exercise Video"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowfullscreen>
                     </iframe>
                 </div>
@@ -120,7 +220,7 @@ export default function ActiveWorkout() {
                 <div class="exercise-stats">
                     <div class="stat-box">
                         <span class="label">SET</span>
-                        <span class="val" id="set-display">1 / ${currentEx ? currentEx.sets : '-'}</span>
+                        <span class="val" id="set-display">${Math.min(window.sessionStats.sets + 1, totalSets)} / ${totalSets}</span>
                     </div>
                     <div class="stat-box">
                         <span class="label">REPS</span>
@@ -128,17 +228,42 @@ export default function ActiveWorkout() {
                     </div>
                     <div class="stat-box">
                         <span class="label">RECUPERO</span>
-                        <span class="val">${currentEx ? currentEx.rest_seconds : '-'}s</span>
+                        <span class="val">${restSeconds}s</span>
                     </div>
                 </div>
             </div>
 
             <div class="controls">
-                <button class="btn btn-outline" onclick="window.finishWorkout()">Termina</button>
-                <button class="btn btn-primary" onclick="window.handleNextSet()">Prossimo Set</button>
+                <button class="btn btn-outline" onclick="window.finishWorkout()">
+                    <i class="fas fa-stop"></i> Termina
+                </button>
+                <button class="btn btn-primary" onclick="window.handleNextSet()">
+                    <i class="fas fa-check"></i> Set Completato
+                </button>
             </div>
 
-            <!-- YouTube Music / Spotify Mini-Player -->
+            <!-- Rest Timer Overlay -->
+            <div id="rest-timer-overlay" class="rest-timer-overlay">
+                <div class="rest-timer-content">
+                    <h3>Recupero</h3>
+                    <div class="rest-timer-circle-wrap">
+                        <svg width="140" height="140" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                            <circle id="rest-timer-circle" cx="60" cy="60" r="54" fill="none" stroke="var(--accent-primary)" stroke-width="8"
+                                stroke-dasharray="${2 * Math.PI * 54}" stroke-dashoffset="0"
+                                stroke-linecap="round" transform="rotate(-90 60 60)" style="transition: stroke-dashoffset 1s linear;"/>
+                        </svg>
+                        <span id="rest-timer-display" class="rest-timer-number">${restSeconds}</span>
+                    </div>
+                    <div class="rest-timer-actions">
+                        <button class="btn btn-sm" onclick="window.addRestTime(15)">+15s</button>
+                        <button class="btn btn-primary btn-sm" onclick="window.skipRestTimer()">Salta <i class="fas fa-forward"></i></button>
+                        <button class="btn btn-sm" onclick="window.addRestTime(30)">+30s</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Music Player -->
             <div class="card music-player">
                 <div class="music-info">
                     <i class="fab fa-spotify"></i>
@@ -171,6 +296,23 @@ export default function ActiveWorkout() {
                 padding: 0.5rem 1rem;
                 border-radius: var(--radius-md);
             }
+            .exercise-progress-bar {
+                display: flex;
+                gap: 4px;
+                margin-bottom: var(--spacing-md);
+                padding: 0 var(--spacing-xs);
+            }
+            .ex-pip {
+                flex: 1;
+                height: 4px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 2px;
+                transition: background 0.3s;
+            }
+            .ex-pip.done { background: var(--accent-primary); }
+            .ex-pip.active { background: var(--accent-primary); animation: pulse-pip 1.5s infinite; }
+            @keyframes pulse-pip { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
             .current-exercise-card {
                 text-align: center;
                 padding: var(--spacing-lg);
@@ -190,7 +332,7 @@ export default function ActiveWorkout() {
             }
             .video-container {
                 position: relative;
-                padding-bottom: 56.25%; /* 16:9 aspect ratio */
+                padding-bottom: 56.25%;
                 height: 0;
                 overflow: hidden;
                 border-radius: var(--radius-md);
@@ -200,40 +342,74 @@ export default function ActiveWorkout() {
             }
             .video-container iframe {
                 position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+                top: 0; left: 0; width: 100%; height: 100%;
             }
             .exercise-stats {
                 display: flex;
                 justify-content: space-around;
                 margin-top: var(--spacing-md);
             }
-            .stat-box {
-                display: flex;
-                flex-direction: column;
-            }
-            .stat-box .label {
-                font-size: 0.8rem;
-                color: var(--text-secondary);
-            }
-            .stat-box .val {
-                font-size: 1.5rem;
-                font-weight: 600;
-            }
+            .stat-box { display: flex; flex-direction: column; }
+            .stat-box .label { font-size: 0.8rem; color: var(--text-secondary); }
+            .stat-box .val { font-size: 1.5rem; font-weight: 600; }
             .controls {
                 display: flex;
                 gap: var(--spacing-md);
                 margin-top: var(--spacing-xl);
             }
-            .controls .btn {
-                flex: 1;
-            }
+            .controls .btn { flex: 1; }
             .btn-outline {
                 background: transparent;
                 border: 1px solid var(--text-secondary);
                 color: var(--text-primary);
+            }
+
+            /* ── Rest Timer Overlay ────────────────────── */
+            .rest-timer-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.85);
+                backdrop-filter: blur(8px);
+                z-index: 9999;
+                justify-content: center;
+                align-items: center;
+            }
+            .rest-timer-overlay.active {
+                display: flex;
+            }
+            .rest-timer-content {
+                text-align: center;
+                color: white;
+            }
+            .rest-timer-content h3 {
+                font-size: 1.2rem;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin-bottom: var(--spacing-md);
+                color: var(--text-secondary);
+            }
+            .rest-timer-circle-wrap {
+                position: relative;
+                display: inline-block;
+                margin-bottom: var(--spacing-lg);
+            }
+            .rest-timer-number {
+                position: absolute;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 3rem;
+                font-weight: 700;
+                font-family: monospace;
+                color: white;
+            }
+            .rest-timer-actions {
+                display: flex;
+                gap: var(--spacing-md);
+                justify-content: center;
+            }
+            .rest-timer-actions .btn {
+                min-width: 70px;
             }
 
             /* Music Player */
@@ -243,7 +419,7 @@ export default function ActiveWorkout() {
                 justify-content: space-between;
                 align-items: center;
                 padding: var(--spacing-sm) var(--spacing-md);
-                background: linear-gradient(135deg, #1db954, #191414); /* Spotify Colors */
+                background: linear-gradient(135deg, #1db954, #191414);
                 border: none;
             }
             .music-info { display: flex; align-items: center; gap: 10px; }

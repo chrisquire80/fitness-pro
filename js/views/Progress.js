@@ -114,10 +114,60 @@ export default function Progress() {
 
     const chartData = getLast7DaysData();
 
-    // Initialize Chart after render
+    // ── Strength Progression Data ──────────────────────────────
+    const getStrengthProgression = () => {
+        // Group logs by workout type, ordered by date
+        const typeMap = {};
+        logs.forEach(log => {
+            const type = log.type || 'Unknown';
+            const date = log.date || log.created_at?.split('T')[0];
+            if (!date) return;
+            if (!typeMap[type]) typeMap[type] = [];
+            typeMap[type].push({
+                date,
+                sets: log.sets || 0,
+                reps: log.reps || 0,
+                volume: (log.sets || 0) * (log.reps || 0), // total volume
+                duration: log.duration_real ? Math.round(log.duration_real / 60) : 20,
+            });
+        });
+
+        // Sort each type by date
+        Object.values(typeMap).forEach(entries => entries.sort((a, b) => a.date.localeCompare(b.date)));
+        return typeMap;
+    };
+
+    const strengthData = getStrengthProgression();
+    const strengthTypes = Object.keys(strengthData);
+
+    // Color palette for multiple lines
+    const chartColors = ['#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#ec4899'];
+
+    // ── Personal Records (Volume) ────────────────────────────
+    const getVolumeRecords = () => {
+        const records = {};
+        logs.forEach(log => {
+            const type = log.type || 'Unknown';
+            const volume = (log.sets || 0) * (log.reps || 0);
+            if (!records[type] || volume > records[type].volume) {
+                records[type] = { volume, sets: log.sets || 0, reps: log.reps || 0, date: log.date };
+            }
+        });
+        return Object.entries(records)
+            .map(([type, data]) => ({ type, ...data }))
+            .sort((a, b) => b.volume - a.volume)
+            .slice(0, 5);
+    };
+
+    const volumeRecords = getVolumeRecords();
+
+    // Initialize Charts after render
     setTimeout(() => {
+        if (!window.Chart) return;
+
+        // ── Activity Bar Chart ──────────────────────
         const ctx = document.getElementById('weightChart');
-        if (ctx && window.Chart) {
+        if (ctx) {
             new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -131,14 +181,90 @@ export default function Progress() {
                 },
                 options: {
                     responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Minuti' } },
+                        x: { display: true }
+                    }
+                }
+            });
+        }
+
+        // ── Volume Progression Line Chart ───────────
+        const volCtx = document.getElementById('volumeChart');
+        if (volCtx && strengthTypes.length > 0) {
+            const datasets = strengthTypes.slice(0, 6).map((type, idx) => {
+                const entries = strengthData[type];
+                return {
+                    label: type,
+                    data: entries.map(e => e.volume),
+                    borderColor: chartColors[idx % chartColors.length],
+                    backgroundColor: chartColors[idx % chartColors.length] + '20',
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                };
+            });
+
+            // Use the longest type's dates as labels
+            const longestType = strengthTypes.reduce((a, b) =>
+                strengthData[a].length >= strengthData[b].length ? a : b
+            );
+            const labels = strengthData[longestType].map(e => {
+                const d = new Date(e.date);
+                return d.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+            });
+
+            new Chart(volCtx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
                     plugins: {
-                        legend: { display: true }
+                        legend: { display: true, position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} volume (set × reps)`
+                            }
+                        }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Minuti' }
-                        },
+                        y: { beginAtZero: true, title: { display: true, text: 'Volume (Set × Reps)' } },
+                        x: { display: true }
+                    }
+                }
+            });
+        }
+
+        // ── Sets Progression Line Chart ─────────────
+        const setsCtx = document.getElementById('setsChart');
+        if (setsCtx && strengthTypes.length > 0) {
+            const datasets = strengthTypes.slice(0, 6).map((type, idx) => ({
+                label: type,
+                data: strengthData[type].map(e => e.sets),
+                borderColor: chartColors[idx % chartColors.length],
+                tension: 0.3,
+                fill: false,
+                pointRadius: 3,
+            }));
+
+            const longestType = strengthTypes.reduce((a, b) =>
+                strengthData[a].length >= strengthData[b].length ? a : b
+            );
+            const labels = strengthData[longestType].map(e => {
+                const d = new Date(e.date);
+                return d.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+            });
+
+            new Chart(setsCtx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true, position: 'bottom' } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Set Totali' } },
                         x: { display: true }
                     }
                 }
@@ -169,6 +295,44 @@ export default function Progress() {
                 <h3>Allenamenti - Ultimi 7 Giorni</h3>
                 <canvas id="weightChart"></canvas>
             </div>
+
+            <!-- Strength Progression Section -->
+            ${strengthTypes.length > 0 ? `
+            <div class="strength-section">
+                <h2><i class="fas fa-chart-line"></i> Progressione Forza</h2>
+                <div class="chart-container card">
+                    <h3>Volume nel Tempo (Set × Reps)</h3>
+                    <canvas id="volumeChart"></canvas>
+                </div>
+                <div class="chart-container card">
+                    <h3>Set Totali per Allenamento</h3>
+                    <canvas id="setsChart"></canvas>
+                </div>
+
+                ${volumeRecords.length > 0 ? `
+                <div class="records-section card">
+                    <h3><i class="fas fa-medal"></i> Record Personali (Volume)</h3>
+                    <div class="records-list">
+                        ${volumeRecords.map((record, idx) => `
+                            <div class="record-item">
+                                <span class="record-rank">${['🥇','🥈','🥉','4°','5°'][idx]}</span>
+                                <span class="record-type">${record.type}</span>
+                                <div class="record-details">
+                                    <span class="record-value">${record.volume} vol</span>
+                                    <span class="record-sub">${record.sets}s × ${record.reps}r · ${record.date}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+            ` : `
+            <div class="card" style="text-align:center; padding: var(--spacing-lg); margin: var(--spacing-lg) 0;">
+                <i class="fas fa-chart-line" style="font-size:2rem; color: var(--text-secondary); margin-bottom: var(--spacing-sm);"></i>
+                <p style="color: var(--text-secondary);">Completa qualche allenamento per vedere i grafici di progressione!</p>
+            </div>
+            `}
 
             <!-- Advanced Analytics Section -->
             <div class="analytics-section">
@@ -340,6 +504,27 @@ export default function Progress() {
                 border-radius: 12px;
                 font-size: 0.8rem;
                 font-weight: 600;
+            }
+
+            /* Strength Progression */
+            .strength-section { margin: var(--spacing-lg) 0; }
+            .strength-section h2 {
+                margin-bottom: var(--spacing-md);
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-sm);
+            }
+            .strength-section .chart-container { margin-bottom: var(--spacing-md); }
+
+            .record-details {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            .record-sub {
+                font-size: 0.7rem;
+                color: var(--text-secondary);
+                margin-top: 2px;
             }
         </style>
     `;
