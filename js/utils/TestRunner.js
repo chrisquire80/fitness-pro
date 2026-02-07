@@ -16,9 +16,11 @@ class TestRunner {
   /**
    * Initialize test runner and create UI
    */
-  init() {
+  async init() {
     this.createTestUI();
     this.registerTests();
+    // Wait briefly for async comprehensive tests to load
+    await new Promise((r) => setTimeout(r, 200));
     console.log("🧪 TestRunner initialized with", this.tests.length, "tests");
   }
 
@@ -285,6 +287,30 @@ class TestRunner {
 
     // Integration Tests
     this.addTest("Full Integration", this.testIntegration, "critical");
+
+    // Register comprehensive test suite
+    this.registerComprehensiveTests();
+  }
+
+  /**
+   * Register comprehensive tests from TestSuite module
+   */
+  async registerComprehensiveTests() {
+    try {
+      const { testRegistry } = await import("../tests/TestSuite.js");
+      for (const test of testRegistry) {
+        this.addTest(
+          test.name,
+          test.testFunction,
+          test.priority,
+        );
+      }
+      console.log(
+        `🧪 Registered ${testRegistry.length} comprehensive tests (total: ${this.tests.length})`,
+      );
+    } catch (error) {
+      console.warn("Could not load comprehensive test suite:", error.message);
+    }
   }
 
   /**
