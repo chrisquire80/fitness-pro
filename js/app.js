@@ -1,5 +1,6 @@
 import Navbar from "./components/Navbar.js?v=2";
 import FloatCoach from "./components/FloatCoach.js?v=2";
+import PWAPrompt from "./components/PWAPrompt.js";
 import { modal } from "./components/Modal.js";
 import Home from "./views/Home.js?v=2";
 import Workouts from "./views/Workouts.js?v=2";
@@ -9,6 +10,8 @@ import Profile from "./views/Profile.js?v=2";
 import Progress from "./views/Progress.js?v=2";
 import Nutrition from "./views/Nutrition.js?v=2";
 import Gamification from "./views/Gamification.js?v=2";
+import VideoLibrary from "./views/VideoLibrary.js?v=2";
+import AICoach from "./views/AICoach.js?v=2";
 import Onboarding from "./views/Onboarding.js?v=2";
 import AdminDashboard from "./views/AdminDashboard.js?v=2";
 import RunTracker from "./views/RunTracker.js?v=2";
@@ -21,6 +24,9 @@ import { backupService } from "./services/BackupService.js";
 import { syncQueueService } from "./services/SyncQueueService.js";
 import { indexedDBService } from "./services/IndexedDBService.js";
 import { gamificationService } from "./services/GamificationService.js";
+import { videoService } from "./services/VideoService.js";
+import { pwaService } from "./services/PWAService.js";
+import { coachingEngine } from "./services/CoachingEngine.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
@@ -52,6 +58,15 @@ async function initializeCoreServices() {
 
     // Initialize gamification service for achievements and challenges
     await gamificationService.init();
+
+    // Initialize video service for workout videos
+    await videoService.init();
+
+    // Initialize PWA service for offline support and installation
+    await pwaService.init();
+
+    // Initialize coaching engine for AI coaching
+    await coachingEngine.init();
 
     // Initialize test runner in debug mode
     if (config.isDebugMode()) {
@@ -123,6 +138,18 @@ const routes = {
     requiresAuth: true,
     analytics: "page_gamification",
   },
+  "/videos": {
+    component: VideoLibrary,
+    title: "Video Library",
+    requiresAuth: true,
+    analytics: "page_videos",
+  },
+  "/coach": {
+    component: AICoach,
+    title: "AI Coach",
+    requiresAuth: true,
+    analytics: "page_ai_coach",
+  },
   "/onboarding": {
     component: Onboarding,
     title: "Configurazione",
@@ -175,6 +202,11 @@ function renderLayout() {
       navbarContainer.innerHTML = Navbar();
       const coachContainer = document.getElementById("coach-container");
       if (coachContainer) coachContainer.innerHTML = FloatCoach();
+
+      // Add PWA installation prompt
+      const pwaContainer = document.getElementById("pwa-container");
+      if (pwaContainer) pwaContainer.innerHTML = PWAPrompt();
+
       stateManager.setState("ui.navbar.visible", true);
     }
 

@@ -16,6 +16,7 @@ const STATIC_ASSETS = [
   '/icons/icon.svg',
   '/js/components/Navbar.js',
   '/js/components/FloatCoach.js',
+  '/js/components/VideoPlayer.js',
   '/js/services/DataManager.js',
   '/js/services/AICoach.js',
   '/js/services/Analytics.js',
@@ -23,6 +24,13 @@ const STATIC_ASSETS = [
   '/js/services/BackupService.js',
   '/js/services/NutritionService.js',
   '/js/services/EmailService.js',
+  '/js/services/SyncQueueService.js',
+  '/js/services/IndexedDBService.js',
+  '/js/services/GamificationService.js',
+  '/js/services/RecommendationEngine.js',
+  '/js/services/i18nService.js',
+  '/js/services/VideoService.js',
+  '/js/services/CoachingEngine.js',
   '/js/utils/NotificationManager.js',
   '/js/utils/AudioGuide.js',
   '/js/utils/Config.js',
@@ -39,7 +47,10 @@ const STATIC_ASSETS = [
   '/js/views/Onboarding.js',
   '/js/views/Workouts.js',
   '/js/views/RunTracker.js',
-  '/js/views/AdminDashboard.js'
+  '/js/views/AdminDashboard.js',
+  '/js/views/Gamification.js',
+  '/js/views/VideoLibrary.js',
+  '/js/views/AICoach.js'
 ];
 
 // External resources that can be cached
