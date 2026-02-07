@@ -716,8 +716,25 @@ class AuthService {
     }
 
     validateSecurityToken(token) {
-        // In production, implement proper token validation
-        return token && token.length > 10;
+        // Proper token validation with format and length checks
+        if (!token || typeof token !== 'string') {
+            return false;
+        }
+
+        const trimmedToken = token.trim();
+
+        // Token must have reasonable length (min 15, max 64 chars)
+        if (trimmedToken.length < 15 || trimmedToken.length > 64) {
+            return false;
+        }
+
+        // Validate hex format if token appears to be crypto-generated (32 chars of hex)
+        if (trimmedToken.length === 32) {
+            return /^[0-9a-f]{32}$/i.test(trimmedToken);
+        }
+
+        // For fallback tokens, ensure alphanumeric format
+        return /^[a-zA-Z0-9_-]+$/.test(trimmedToken);
     }
 
     getDeviceInfo() {
