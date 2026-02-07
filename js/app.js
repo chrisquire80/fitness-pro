@@ -12,6 +12,7 @@ import Nutrition from "./views/Nutrition.js?v=2";
 import Gamification from "./views/Gamification.js?v=2";
 import VideoLibrary from "./views/VideoLibrary.js?v=2";
 import AICoach from "./views/AICoach.js?v=2";
+import Leaderboards from "./views/Leaderboards.js?v=2";
 import Onboarding from "./views/Onboarding.js?v=2";
 import AdminDashboard from "./views/AdminDashboard.js?v=2";
 import RunTracker from "./views/RunTracker.js?v=2";
@@ -27,6 +28,7 @@ import { gamificationService } from "./services/GamificationService.js";
 import { videoService } from "./services/VideoService.js";
 import { pwaService } from "./services/PWAService.js";
 import { coachingEngine } from "./services/CoachingEngine.js";
+import { leaderboardService } from "./services/LeaderboardService.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
@@ -67,6 +69,9 @@ async function initializeCoreServices() {
 
     // Initialize coaching engine for AI coaching
     await coachingEngine.init();
+
+    // Initialize leaderboard service for rankings
+    await leaderboardService.init();
 
     // Initialize test runner in debug mode
     if (config.isDebugMode()) {
@@ -149,6 +154,12 @@ const routes = {
     title: "AI Coach",
     requiresAuth: true,
     analytics: "page_ai_coach",
+  },
+  "/leaderboards": {
+    component: Leaderboards,
+    title: "Leaderboards",
+    requiresAuth: true,
+    analytics: "page_leaderboards",
   },
   "/onboarding": {
     component: Onboarding,
