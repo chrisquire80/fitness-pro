@@ -251,7 +251,7 @@ function renderLayout() {
 // Get current path (supporting both hash and History API)
 function getCurrentPath() {
   // Prefer History API if available and not using hash routing
-  if (window.history && config.get("routing.useHistoryApi", true)) {
+  if (window.history && config.get("routing.useHistoryApi", false)) {
     const pathname = window.location.pathname;
     // Remove base path if configured
     const basePath = config.get("routing.basePath", "");
@@ -272,7 +272,7 @@ function getCurrentPath() {
 // Update active navigation link (supports both hash and History API)
 function updateActiveNavLink(path) {
   const navLinks = document.querySelectorAll(".nav-link");
-  const useHistoryApi = config.get("routing.useHistoryApi", true);
+  const useHistoryApi = config.get("routing.useHistoryApi", false);
 
   navLinks.forEach((link) => {
     link.classList.remove("active-nav");
@@ -420,7 +420,7 @@ async function router() {
 // Navigate to a path programmatically (with History API support)
 function navigateTo(path) {
   // Use History API if available and configured
-  if (window.history?.pushState && config.get("routing.useHistoryApi", true)) {
+  if (window.history?.pushState && config.get("routing.useHistoryApi", false)) {
     const basePath = config.get("routing.basePath", "");
     const fullPath = basePath + path;
     window.history.pushState({ path }, "", fullPath);

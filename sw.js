@@ -3,7 +3,7 @@
  * Provides offline functionality and caching for PWA experience
  */
 
-const CACHE_NAME = 'fitness-pro-v1.0.3';
+const CACHE_NAME = 'fitness-pro-v1.0.4';
 const STATIC_CACHE = 'fitness-static-v2';
 const DYNAMIC_CACHE = 'fitness-dynamic-v2';
 
@@ -11,6 +11,7 @@ const DYNAMIC_CACHE = 'fitness-dynamic-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/favicon.ico',
   '/css/style.css',
   '/js/app.js?v=2',
   '/icons/icon.svg',
