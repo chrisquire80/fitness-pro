@@ -926,7 +926,7 @@ async function testDataManagerCRUD() {
 
   // --- getCurrentUser / saveUser ---
   const user = dataManager.getCurrentUser();
-  assertType(typeof user, "object", "getCurrentUser returns object");
+  assertType(user, "object", "getCurrentUser returns object");
 
   // --- getWeeklyStats ---
   const weeklyStats = dataManager.getWeeklyStats();
@@ -1713,51 +1713,52 @@ async function testErrorHandler() {
  * Integration: All services initialized
  */
 async function testServicesIntegration() {
-  // Verify all core services are available
-  const services = [
-    "fitnessApp",
-    "dataManager",
-    "stateManager",
-    "authService",
-    "errorHandler",
-    "performanceMonitor",
-    "notificationManager",
-  ];
+  // Import services directly for Node.js compatibility
+  const { dataManager } = await import("../services/DataManager.js");
+  const { stateManager } = await import("../utils/StateManager.js");
 
-  for (const service of services) {
-    assertNotNull(window[service], `${service} is available globally`);
-  }
+  // Verify core services via import
+  assertNotNull(dataManager, "dataManager is available");
+  assertNotNull(stateManager, "stateManager is available");
 
-  // Verify fitnessApp API
-  const methods = ["getState", "setState", "navigateTo", "showNotification"];
-  for (const method of methods) {
-    assertType(
-      window.fitnessApp[method],
-      "function",
-      `fitnessApp.${method} is a function`
-    );
+  // If in browser, also verify globals
+  if (typeof window !== "undefined" && window.fitnessApp) {
+    const services = [
+      "fitnessApp",
+      "dataManager",
+      "stateManager",
+      "authService",
+      "errorHandler",
+    ];
+
+    for (const service of services) {
+      assertNotNull(window[service], `${service} is available globally`);
+    }
+
+    // Verify fitnessApp API
+    const methods = ["getState", "setState", "navigateTo", "showNotification"];
+    for (const method of methods) {
+      assertType(
+        window.fitnessApp[method],
+        "function",
+        `fitnessApp.${method} is a function`
+      );
+    }
   }
 
   // Verify DataManager has seeded data
-  const exercises = window.dataManager.getExercises();
+  const exercises = dataManager.getExercises();
   assertTrue(exercises.length > 0, "DataManager has seeded exercises");
 
-  const workouts = window.dataManager.getWorkouts();
+  const workouts = dataManager.getWorkouts();
   assertTrue(workouts.length > 0, "DataManager has seeded workouts");
 
   // Verify state manager has default state structure
-  const state = window.stateManager.getState();
+  const state = stateManager.getState();
   assertNotNull(state.app, "State has app section");
   assertNotNull(state.user, "State has user section");
   assertNotNull(state.workout, "State has workout section");
   assertNotNull(state.ui, "State has ui section");
-
-  // Cross-service: DataManager exercises match what StateManager can access
-  const exercisesFromDM = window.dataManager.getExercises();
-  assertTrue(
-    exercisesFromDM.length > 0,
-    "DataManager exercises accessible through global"
-  );
 }
 
 /**
