@@ -31,6 +31,7 @@ const STATIC_ASSETS = [
   '/js/services/i18nService.js',
   '/js/services/VideoService.js',
   '/js/services/CoachingEngine.js',
+  '/js/services/LeaderboardService.js',
   '/js/utils/NotificationManager.js',
   '/js/utils/AudioGuide.js',
   '/js/utils/Config.js',
@@ -50,7 +51,8 @@ const STATIC_ASSETS = [
   '/js/views/AdminDashboard.js',
   '/js/views/Gamification.js',
   '/js/views/VideoLibrary.js',
-  '/js/views/AICoach.js'
+  '/js/views/AICoach.js',
+  '/js/views/Leaderboards.js'
 ];
 
 // External resources that can be cached
