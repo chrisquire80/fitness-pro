@@ -40,6 +40,7 @@ const STATIC_ASSETS = [
   '/js/utils/PerformanceMonitor.js',
   '/js/utils/StateManager.js',
   '/js/utils/TestRunner.js',
+  '/js/tests/TestSuite.js',
   '/js/views/Home.js',
   '/js/views/Exercises.js',
   '/js/views/ActiveWorkout.js',

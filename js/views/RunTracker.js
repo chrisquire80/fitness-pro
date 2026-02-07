@@ -604,6 +604,9 @@ function showRunSummary(runData) {
   setTimeout(() => overlay.classList.add("visible"), 10);
 }
 
+// Export pure functions for testing
+export { calculateDistance, formatTime, formatPace, toRad };
+
 export default function RunTracker() {
   // Reset UI state on mount
   setTimeout(() => {
