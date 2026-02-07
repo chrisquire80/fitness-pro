@@ -250,23 +250,25 @@ function renderLayout() {
 
 // Get current path (supporting both hash and History API)
 function getCurrentPath() {
+  let path = "/";
+
   // Prefer History API if available and not using hash routing
   if (window.history && config.get("routing.useHistoryApi", false)) {
     const pathname = window.location.pathname;
     // Remove base path if configured
     const basePath = config.get("routing.basePath", "");
     if (basePath && pathname.startsWith(basePath)) {
-      return pathname.slice(basePath.length) || "/";
+      path = pathname.slice(basePath.length) || "/";
+    } else {
+      path = pathname || "/";
     }
-    return pathname || "/";
+  } else if (window.location.hash) {
+    // Fallback to hash routing for backward compatibility
+    path = window.location.hash.slice(1) || "/";
   }
 
-  // Fallback to hash routing for backward compatibility
-  if (window.location.hash) {
-    return window.location.hash.slice(1) || "/";
-  }
-
-  return "/";
+  // Strip query parameters for route matching
+  return path.split("?")[0] || "/";
 }
 
 // Update active navigation link (supports both hash and History API)
