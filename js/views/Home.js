@@ -1,5 +1,6 @@
 import { dataManager } from '../services/DataManager.js';
 import { emailService } from '../services/EmailService.js';
+import { recommendationEngine } from '../services/RecommendationEngine.js';
 
 export default function Home() {
     const user = dataManager.getCurrentUser();
@@ -7,19 +8,11 @@ export default function Home() {
     // Simulate Weekly Recap trigger on Home load
     setTimeout(() => emailService.sendWeeklyRecap(), 2000);
 
-    // Get a smart recommendation
-    const workouts = dataManager.getWorkouts();
-    let recommended = {};
-
-    if (workouts.length > 0) {
-        // Prefer non-premium workouts
-        const availableWorkouts = workouts.filter(w => !w.is_premium);
-        const selectableWorkouts = availableWorkouts.length > 0 ? availableWorkouts : workouts;
-
-        // Select a random workout for variety
-        const randomIndex = Math.floor(Math.random() * selectableWorkouts.length);
-        recommended = selectableWorkouts[randomIndex];
-    }
+    // Get intelligent recommendation based on user profile and history
+    const recommended = recommendationEngine.getRecommendation({
+        timeAvailable: 45,  // default 45 minutes
+        equipment: []       // assume all equipment available
+    }) || {};
 
     // Determine greeting based on time
     const hour = new Date().getHours();

@@ -17,6 +17,7 @@ import { config } from "./utils/Config.js";
 import { analytics } from "./services/Analytics.js";
 import { authService } from "./services/AuthService.js";
 import { backupService } from "./services/BackupService.js";
+import { syncQueueService } from "./services/SyncQueueService.js";
 import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
@@ -39,6 +40,9 @@ async function initializeCoreServices() {
 
     // Initialize backup service
     await backupService.init();
+
+    // Initialize sync queue service for offline operations
+    syncQueueService.init();
 
     // Initialize test runner in debug mode
     if (config.isDebugMode()) {
