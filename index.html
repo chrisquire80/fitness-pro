@@ -1,201 +1,173 @@
 <!doctype html>
 <html lang="it">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Fitness Pro - Personal Trainer AI</title>
 
-        <!-- PWA Meta Tags -->
-        <meta
-            name="description"
-            content="Il tuo personal trainer AI per allenamenti personalizzati, tracciamento progressi e nutrizione intelligente"
-        />
-        <meta name="theme-color" content="#8b5cf6" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta
-            name="apple-mobile-web-app-status-bar-style"
-            content="black-translucent"
-        />
-        <meta name="apple-mobile-web-app-title" content="Fitness Pro" />
-        <meta name="msapplication-TileColor" content="#8b5cf6" />
-        <meta name="msapplication-config" content="browserconfig.xml" />
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fitness Pro - Personal Trainer AI</title>
 
-        <!-- Manifest -->
-        <link rel="manifest" href="manifest.json" />
+    <!-- PWA Meta Tags -->
+    <meta name="description"
+        content="Il tuo personal trainer AI per allenamenti personalizzati, tracciamento progressi e nutrizione intelligente" />
+    <meta name="theme-color" content="#8b5cf6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Fitness Pro" />
+    <meta name="msapplication-TileColor" content="#8b5cf6" />
+    <meta name="msapplication-config" content="browserconfig.xml" />
 
-        <!-- Icons -->
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="32x32"
-            href="icons/favicon-32x32.png"
-        />
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="16x16"
-            href="icons/favicon-16x16.png"
-        />
-        <link
-            rel="apple-touch-icon"
-            sizes="180x180"
-            href="icons/apple-touch-icon.png"
-        />
-        <link
-            rel="mask-icon"
-            href="icons/safari-pinned-tab.svg"
-            color="#8b5cf6"
-        />
-        <link rel="stylesheet" href="css/style.css" />
-        <!-- Google Fonts -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
-            rel="stylesheet"
-        />
-        <!-- Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <!-- Font Awesome -->
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-            integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"
-        />
-    </head>
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json" />
 
-    <body>
-        <div id="app">
-            <nav id="navbar" class="navbar"></nav>
-            <main id="main-content" class="container"></main>
-            <div id="coach-container"></div>
-        </div>
-        <script type="module" src="js/app.js"></script>
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+    <link rel="mask-icon" href="icons/safari-pinned-tab.svg" color="#8b5cf6" />
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
 
-        <!-- Service Worker Registration -->
-        <script>
-            if ("serviceWorker" in navigator) {
-                window.addEventListener("load", async () => {
-                    try {
-                        const registration =
-                            await navigator.serviceWorker.register("/sw.js", {
-                                scope: "/",
-                            });
+<body>
+    <div id="app">
+        <nav id="navbar" class="navbar"></nav>
+        <main id="main-content" class="container"></main>
+        <div id="coach-container"></div>
+    </div>
+    <script type="module" src="js/app.js?v=2"></script>
 
-                        console.log(
-                            "ServiceWorker registered successfully:",
-                            registration,
-                        );
-
-                        // Listen for updates
-                        registration.addEventListener("updatefound", () => {
-                            const newWorker = registration.installing;
-                            if (newWorker) {
-                                newWorker.addEventListener(
-                                    "statechange",
-                                    () => {
-                                        if (
-                                            newWorker.state === "installed" &&
-                                            navigator.serviceWorker.controller
-                                        ) {
-                                            // Show update notification
-                                            if (
-                                                window.fitnessApp
-                                                    ?.showNotification
-                                            ) {
-                                                window.fitnessApp.showNotification(
-                                                    "info",
-                                                    "Aggiornamento Disponibile",
-                                                    "Una nuova versione è pronta. Ricarica per aggiornare.",
-                                                    {
-                                                        duration: 0,
-                                                        actions: [
-                                                            {
-                                                                text: "Aggiorna",
-                                                                onClick: () =>
-                                                                    window.location.reload(),
-                                                                type: "primary",
-                                                            },
-                                                        ],
-                                                    },
-                                                );
-                                            }
-                                        }
-                                    },
-                                );
-                            }
+    <!-- Service Worker Registration -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", async () => {
+                try {
+                    const registration =
+                        await navigator.serviceWorker.register("/sw.js", {
+                            scope: "/",
                         });
 
-                        // Request notification permission
-                        if (
-                            "Notification" in window &&
-                            Notification.permission === "default"
-                        ) {
-                            const permission =
-                                await Notification.requestPermission();
-                            console.log("Notification permission:", permission);
+                    console.log(
+                        "ServiceWorker registered successfully:",
+                        registration,
+                    );
+
+                    // Listen for updates
+                    registration.addEventListener("updatefound", () => {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener(
+                                "statechange",
+                                () => {
+                                    if (
+                                        newWorker.state === "installed" &&
+                                        navigator.serviceWorker.controller
+                                    ) {
+                                        // Show update notification
+                                        if (
+                                            window.fitnessApp
+                                                ?.showNotification
+                                        ) {
+                                            window.fitnessApp.showNotification(
+                                                "info",
+                                                "Aggiornamento Disponibile",
+                                                "Una nuova versione è pronta. Ricarica per aggiornare.",
+                                                {
+                                                    duration: 0,
+                                                    actions: [
+                                                        {
+                                                            text: "Aggiorna",
+                                                            onClick: () =>
+                                                                window.location.reload(),
+                                                            type: "primary",
+                                                        },
+                                                    ],
+                                                },
+                                            );
+                                        }
+                                    }
+                                },
+                            );
                         }
-                    } catch (error) {
-                        console.error(
-                            "ServiceWorker registration failed:",
-                            error,
-                        );
+                    });
+
+                    // Request notification permission
+                    if (
+                        "Notification" in window &&
+                        Notification.permission === "default"
+                    ) {
+                        const permission =
+                            await Notification.requestPermission();
+                        console.log("Notification permission:", permission);
                     }
-                });
-            }
-
-            // Handle app install prompt
-            let deferredPrompt;
-            window.addEventListener("beforeinstallprompt", (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-
-                // Show install prompt to user
-                if (window.fitnessApp?.showNotification) {
-                    setTimeout(() => {
-                        window.fitnessApp.showNotification(
-                            "info",
-                            "Installa App",
-                            "Installa Fitness Pro per un'esperienza migliore!",
-                            {
-                                duration: 8000,
-                                actions: [
-                                    {
-                                        text: "Installa",
-                                        onClick: async () => {
-                                            if (deferredPrompt) {
-                                                deferredPrompt.prompt();
-                                                const { outcome } =
-                                                    await deferredPrompt.userChoice;
-                                                console.log(
-                                                    "Install prompt result:",
-                                                    outcome,
-                                                );
-                                                deferredPrompt = null;
-                                            }
-                                        },
-                                        type: "primary",
-                                    },
-                                ],
-                            },
-                        );
-                    }, 3000);
-                }
-            });
-
-            // Handle successful app install
-            window.addEventListener("appinstalled", () => {
-                console.log("App installed successfully");
-                if (window.fitnessApp?.showNotification) {
-                    window.fitnessApp.showNotification(
-                        "success",
-                        "App Installata!",
-                        "Fitness Pro è ora disponibile nella tua home screen.",
+                } catch (error) {
+                    console.error(
+                        "ServiceWorker registration failed:",
+                        error,
                     );
                 }
             });
-        </script>
-    </body>
+        }
+
+        // Handle app install prompt
+        let deferredPrompt;
+        window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install prompt to user
+            if (window.fitnessApp?.showNotification) {
+                setTimeout(() => {
+                    window.fitnessApp.showNotification(
+                        "info",
+                        "Installa App",
+                        "Installa Fitness Pro per un'esperienza migliore!",
+                        {
+                            duration: 8000,
+                            actions: [
+                                {
+                                    text: "Installa",
+                                    onClick: async () => {
+                                        if (deferredPrompt) {
+                                            deferredPrompt.prompt();
+                                            const { outcome } =
+                                                await deferredPrompt.userChoice;
+                                            console.log(
+                                                "Install prompt result:",
+                                                outcome,
+                                            );
+                                            deferredPrompt = null;
+                                        }
+                                    },
+                                    type: "primary",
+                                },
+                            ],
+                        },
+                    );
+                }, 3000);
+            }
+        });
+
+        // Handle successful app install
+        window.addEventListener("appinstalled", () => {
+            console.log("App installed successfully");
+            if (window.fitnessApp?.showNotification) {
+                window.fitnessApp.showNotification(
+                    "success",
+                    "App Installata!",
+                    "Fitness Pro è ora disponibile nella tua home screen.",
+                );
+            }
+        });
+    </script>
+</body>
+
 </html>

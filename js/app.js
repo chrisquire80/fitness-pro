@@ -21,6 +21,44 @@ import { errorHandler } from "./utils/ErrorHandler.js";
 import { performanceMonitor } from "./utils/PerformanceMonitor.js";
 import { testRunner } from "./utils/TestRunner.js";
 
+// Initialize core services - globally accessible
+async function initializeCoreServices() {
+  try {
+    // Initialize performance monitoring first
+    if (!performanceMonitor.isInitialized) {
+      performanceMonitor.init();
+    }
+
+    // Initialize error handling
+    if (!errorHandler.isInitialized) {
+      errorHandler.init();
+    }
+
+    // Initialize authentication service
+    await authService.init();
+
+    // Initialize backup service
+    await backupService.init();
+
+    // Initialize test runner in debug mode
+    if (config.isDebugMode()) {
+      testRunner.init();
+    }
+
+    // Initialize analytics integration (Firebase if available)
+    if (config.isFeatureEnabled("analytics")) {
+      analytics.flushQueue();
+    }
+
+    if (config.isDebugMode()) {
+      console.log("🚀 Core services initialized");
+    }
+  } catch (error) {
+    console.error("Core services initialization failed:", error);
+    throw error;
+  }
+}
+
 // Enhanced Router with state management and metadata
 const routes = {
   "/": {
@@ -478,6 +516,7 @@ function initGenericView(path) {
   console.log(`Generic view initialization for: ${path}`);
 }
 
+
 function initViewCommonFeatures(path, route) {
   // Add route-specific keyboard shortcuts
   document.addEventListener("keydown", (e) => {
@@ -504,44 +543,6 @@ function initViewCommonFeatures(path, route) {
       });
     }
   });
-
-  // Initialize core services
-  async function initializeCoreServices() {
-    try {
-      // Initialize performance monitoring first
-      if (!performanceMonitor.isInitialized) {
-        performanceMonitor.init();
-      }
-
-      // Initialize error handling
-      if (!errorHandler.isInitialized) {
-        errorHandler.init();
-      }
-
-      // Initialize authentication service
-      await authService.init();
-
-      // Initialize backup service
-      await backupService.init();
-
-      // Initialize test runner in debug mode
-      if (config.isDebugMode()) {
-        testRunner.init();
-      }
-
-      // Initialize analytics integration (Firebase if available)
-      if (config.isFeatureEnabled("analytics")) {
-        analytics.flushQueue();
-      }
-
-      if (config.isDebugMode()) {
-        console.log("🚀 Core services initialized");
-      }
-    } catch (error) {
-      console.error("Core services initialization failed:", error);
-      throw error;
-    }
-  }
 
   // Update page visibility tracking
   document.addEventListener("visibilitychange", () => {
